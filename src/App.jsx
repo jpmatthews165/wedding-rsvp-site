@@ -115,6 +115,8 @@ export default function App() {
   const heroBgRef = useRef(null);
   const registrySectionRef = useRef(null);
   const registryBgRef = useRef(null);
+  const rsvpSectionRef = useRef(null);
+  const rsvpBgRef = useRef(null);
 
   const weddingDate = new Date('May 29, 2027 10:00:00').getTime();
 
@@ -171,6 +173,10 @@ export default function App() {
           if (registrySectionRef.current && registryBgRef.current) {
             const rect = registrySectionRef.current.getBoundingClientRect();
             registryBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
+          }
+          if (rsvpSectionRef.current && rsvpBgRef.current) {
+            const rect = rsvpSectionRef.current.getBoundingClientRect();
+            rsvpBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
           }
           ticking = false;
         });
@@ -487,14 +493,14 @@ export default function App() {
   // RENDER UI
   // --------------------------------------------------------
   return (
-    <div className="bg-[#fbf7ef] text-[#333036] font-details selection:bg-[#d4a5a5] selection:text-[#fbf7ef] overflow-x-hidden">
+    <div className="bg-[#e6dbcc] text-[#333036] font-details selection:bg-[#d4a5a5] selection:text-[#e6dbcc] overflow-x-hidden">
       
       {/* =========================================
           WEDDING WEBSITE (GUEST FACING)
           ========================================= */}
       {!isAdminRoute && (
         <>
-          <header className={`fixed top-0 left-0 w-full z-50 bg-[#fbf7ef]/90 backdrop-blur-md border-b border-[#6c5d84]/15 transition-all duration-500 ease-out ${
+          <header className={`fixed top-0 left-0 w-full z-50 bg-[#e6dbcc]/90 backdrop-blur-md border-b border-[#6c5d84]/15 transition-all duration-500 ease-out ${
             showStickyHeader ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -506,7 +512,7 @@ export default function App() {
           </header>
 
           <div 
-            className={`fixed inset-0 bg-[#fbf7ef] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
+            className={`fixed inset-0 bg-[#e6dbcc] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
               isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             }`}
           >
@@ -536,26 +542,26 @@ export default function App() {
             </nav>
           </div>
 
-          <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#fbf7ef]">
+          <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#fbf7ef] via-[#fbf7ef]/40 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
-              <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#6c5d84]">We invite you to celebrate with us</p>
+              <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4a4552]">We invite you to celebrate with us</p>
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#6c5d84] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
 
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
               <button 
                 onClick={() => scrollToSection('rsvp')} 
-                className="font-subtitle border border-[#6c5d84] bg-[#fbf7ef]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors shadow-sm"
+                className="font-subtitle border border-[#6c5d84] bg-[#e6dbcc]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors shadow-sm"
               >
                 RSVP Now
               </button>
             </div>
           </section>
 
-          <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#fbf7ef]">
+          <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#e6dbcc]">
             <div className="max-w-6xl w-full grid md:grid-cols-2 gap-16 md:gap-24 items-center">
               <div className="space-y-10 text-center md:text-left">
                 <RevealOnScroll>
@@ -564,13 +570,13 @@ export default function App() {
                 </RevealOnScroll>
                 
                 <RevealOnScroll delay={100} className="space-y-2">
-                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#6c5d84]">When</p>
+                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4a4552]">When</p>
                   <p className="font-title text-4xl md:text-5xl text-[#6c5d84]">Saturday, May 29th</p>
                   <p className="font-details text-xl text-[#333036] tracking-wide mt-2">Ten O'Clock in the Morning</p>
                 </RevealOnScroll>
                 
                 <RevealOnScroll delay={200} className="space-y-2">
-                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#6c5d84]">Where</p>
+                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4a4552]">Where</p>
                   <p className="font-title text-4xl md:text-5xl text-[#6c5d84]">Lucien's Manor</p>
                   <p className="font-details text-xl text-[#333036] tracking-wide mt-2">81 W White Horse Pike<br/>Berlin, NJ 08009</p>
                 </RevealOnScroll>
@@ -584,27 +590,27 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => scrollToSection('rsvp')} 
-                    className="font-subtitle border border-[#6c5d84] bg-[#6c5d84] text-[#fbf7ef] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#524569] hover:border-[#524569] transition-colors shadow-sm"
+                    className="font-subtitle border border-[#6c5d84] bg-[#6c5d84] text-[#e6dbcc] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#524569] hover:border-[#524569] transition-colors shadow-sm"
                   >
                     RSVP
                   </button>
                 </RevealOnScroll>
 
                 <RevealOnScroll delay={400}>
-                  <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#f2ecdf] z-10 border border-[#b0c4de]/40">
+                  <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#d9cca8] z-10 border border-[#b0c4de]/40">
                     <iframe src="https://maps.google.com/maps?q=Lucien's+Manor,+81+W+White+Horse+Pike,+Berlin,+NJ&t=&z=14&ie=UTF8&iwloc=&output=embed" title="Lucien's Manor Map" className="absolute inset-0 w-full h-full opacity-80 mix-blend-multiply grayscale" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
                   </div>
                 </RevealOnScroll>
               </div>
               <RevealOnScroll delay={200}>
-                <div className="relative h-[80vh] w-full bg-[#f2ecdf] overflow-hidden rounded-sm z-10 shadow-lg border border-[#b0c4de]/40">
+                <div className="relative h-[80vh] w-full bg-[#d9cca8] overflow-hidden rounded-sm z-10 shadow-lg border border-[#b0c4de]/40">
                   <div className="absolute inset-0 w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('/details.jpg')" }}></div>
                 </div>
               </RevealOnScroll>
             </div>
           </section>
 
-          <section id="travel" className="py-32 px-6 md:px-12 bg-[#fbf7ef] border-t border-[#6c5d84]/15">
+          <section id="travel" className="py-32 px-6 md:px-12 bg-[#e6dbcc] border-t border-[#6c5d84]/15">
             <div className="max-w-5xl mx-auto text-center">
               <RevealOnScroll>
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Travel & Stay</h2>
@@ -628,14 +634,14 @@ export default function App() {
                 <RevealOnScroll delay={200} className="space-y-8">
                   <h3 className="font-subtitle text-3xl md:text-4xl tracking-normal text-[#6c5d84]">Accommodations</h3>
                   <p className="font-details text-lg text-[#333036] leading-relaxed">We have secured a block of rooms at a special rate for our guests. Please book before April 29th to ensure availability.</p>
-                  <div className="bg-[#f5eee1] p-8 shadow-sm border border-[#333036]/15 space-y-4">
+                  <div className="bg-[#dccfb9] p-8 shadow-sm border border-[#333036]/15 space-y-4">
                     <p className="font-subtitle text-2xl md:text-3xl tracking-normal text-[#6c5d84]">The Grand Hotel Placeholder</p>
                     <p className="font-details text-lg text-[#333036]">123 Hotel Avenue, Mount Laurel, NJ</p>
                     <div className="pt-4 space-y-2">
                       <p className="font-subtitle text-xs uppercase tracking-[0.15em] text-[#333036]">Discount Code</p>
                       <p className="font-subtitle text-lg tracking-normal text-[#6c5d84]">MATTHEWS27</p>
                     </div>
-                    <button className="mt-4 font-subtitle border border-[#6c5d84] text-[#6c5d84] px-6 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors w-full">Book Room</button>
+                    <button className="mt-4 font-subtitle border border-[#6c5d84] text-[#6c5d84] px-6 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors w-full">Book Room</button>
                   </div>
                 </RevealOnScroll>
               </div>
@@ -643,10 +649,10 @@ export default function App() {
           </section>
 
           {/* COUNTDOWN SECTION - Lilac Majority */}
-          <section className="py-24 bg-[#6c5d84] text-[#fbf7ef] relative z-20 shadow-inner">
+          <section className="py-24 bg-[#6c5d84] text-[#e6dbcc] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
-                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#fbf7ef]">Counting down the days</p>
+                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#e6dbcc]">Counting down the days</p>
               </RevealOnScroll>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -658,8 +664,8 @@ export default function App() {
                 ].map((item) => (
                   <RevealOnScroll key={item.label} delay={item.delay}>
                     <div className="space-y-2">
-                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#fbf7ef] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
-                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#fbf7ef]">{item.label}</p>
+                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#e6dbcc] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
+                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#e6dbcc]">{item.label}</p>
                     </div>
                   </RevealOnScroll>
                 ))}
@@ -667,7 +673,7 @@ export default function App() {
             </div>
           </section>
 
-          <section id="activities" className="py-32 px-6 md:px-12 bg-[#f5eee1]">
+          <section id="activities" className="py-32 px-6 md:px-12 bg-[#dccfb9]">
             <div className="max-w-5xl mx-auto">
               <RevealOnScroll className="text-center mb-16">
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Local Favorites</h2>
@@ -681,7 +687,7 @@ export default function App() {
                   { name: "Philadelphia Historic District", desc: "Take a stroll past the Liberty Bell and Independence Hall just across the bridge.", delay: 300 }
                 ].map((item, i) => (
                   <RevealOnScroll key={i} delay={item.delay}>
-                    <div className="p-8 border border-[#333036]/10 bg-[#fbf7ef]/80 h-full flex flex-col justify-center text-center space-y-4 hover:shadow-md transition-shadow">
+                    <div className="p-8 border border-[#333036]/10 bg-[#e6dbcc]/80 h-full flex flex-col justify-center text-center space-y-4 hover:shadow-md transition-shadow">
                       <h4 className="font-subtitle text-xl md:text-2xl tracking-normal text-[#6c5d84]">{item.name}</h4>
                       <p className="font-details text-[#333036] leading-relaxed">{item.desc}</p>
                     </div>
@@ -693,17 +699,17 @@ export default function App() {
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
             <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
-            <RevealOnScroll className="relative z-10 text-center max-w-2xl px-6 bg-[#fbf7ef]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
+            <RevealOnScroll className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors text-center">Cash Fund</a>
-                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors text-center">Amazon</a>
+                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors text-center">Cash Fund</a>
+                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors text-center">Amazon</a>
               </div>
             </RevealOnScroll>
           </section>
 
-          <section id="faq" className="py-32 px-6 md:px-12 bg-[#f5eee1]">
+          <section id="faq" className="py-32 px-6 md:px-12 bg-[#dccfb9]">
             <div className="max-w-3xl mx-auto">
               <RevealOnScroll className="text-center mb-16">
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">FAQ</h2>
@@ -727,8 +733,12 @@ export default function App() {
             </div>
           </section>
 
-          <section id="rsvp" className="min-h-screen flex items-center justify-center py-24 px-6 bg-[#fbf7ef] relative z-20 border-t border-[#6c5d84]/15">
-            <div className="max-w-xl w-full text-center">
+          {/* RSVP SECTION WITH FLORAL BACKGROUND AND PARALLAX */}
+          <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
+            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}></div>
+            <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
+
+            <div className="max-w-xl w-full text-center relative z-20">
               <RevealOnScroll className="space-y-4 mb-16">
                 <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm uppercase text-[#333036]">We eagerly await your reply</p>
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84]">RSVP</h2>
@@ -737,12 +747,12 @@ export default function App() {
               <RevealOnScroll delay={150} className="relative w-full max-w-md mx-auto">
                 <form onSubmit={handleGuestSearch} className="relative flex items-center border-b border-[#333036] group">
                   <Search className="absolute left-2 text-[#6c5d84] w-5 h-5 transition-colors group-focus-within:text-[#333036]" />
-                  <input type="text" placeholder="Enter Full Name" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setSearchError(''); }} className="w-full pl-10 pr-28 py-4 bg-transparent outline-none text-lg md:text-xl text-[#333036] placeholder:text-[#333036]/40 font-subtitle tracking-wide" />
+                  <input type="text" placeholder="Enter Full Name" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setSearchError(''); }} className="w-full pl-10 pr-28 py-4 bg-transparent outline-none text-lg md:text-xl text-[#333036] placeholder:text-[#333036]/50 font-subtitle tracking-wide" />
                   <button type="submit" className="absolute right-0 font-subtitle text-xs tracking-[0.15em] uppercase text-[#333036] hover:text-[#6c5d84] transition-colors pr-2">Find RSVP</button>
                 </form>
                 
                 {searchError && (
-                  <p className="font-subtitle text-[#d4a5a5] text-xs mt-4 tracking-normal bg-[#d4a5a5]/10 py-3 px-4 rounded border border-[#d4a5a5]/30 uppercase">{searchError}</p>
+                  <p className="font-subtitle text-[#333036] text-xs mt-4 tracking-normal bg-[#d4a5a5]/30 py-3 px-4 rounded border border-[#d4a5a5]/50 uppercase">{searchError}</p>
                 )}
 
                 {searchResults.length > 0 && !searchError && (
@@ -778,7 +788,7 @@ export default function App() {
                           <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <span className="font-subtitle text-[#333036] tracking-[0.1em] uppercase text-sm">{event}</span>
                             <div className="flex gap-4">
-                              <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#fbf7ef] border-[#6c5d84]' : 'border-[#333036]/30 text-[#333036] hover:border-[#6c5d84]'}`}>Accept</button>
+                              <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#e6dbcc] border-[#6c5d84]' : 'border-[#333036]/30 text-[#333036] hover:border-[#6c5d84]'}`}>Accept</button>
                               <button onClick={() => handleRsvpChange(member.id, event, 'no')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-[#d4a5a5] text-[#333036] border-[#d4a5a5]' : 'border-[#333036]/30 text-[#333036] hover:border-[#d4a5a5]'}`}>Decline</button>
                             </div>
                           </div>
@@ -789,13 +799,13 @@ export default function App() {
                   ))}
                 </div>
                 <div className="mt-16 text-center">
-                  <button onClick={() => setSelectedHousehold(null)} className="font-subtitle bg-[#6c5d84] text-[#fbf7ef] px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#524569] transition-colors shadow-lg">Complete RSVP</button>
+                  <button onClick={() => setSelectedHousehold(null)} className="font-subtitle bg-[#6c5d84] text-[#e6dbcc] px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#524569] transition-colors shadow-lg">Complete RSVP</button>
                 </div>
               </div>
             </div>
           )}
 
-          <footer className="py-12 bg-[#fbf7ef] border-t border-[#6c5d84]/15 text-center relative z-20">
+          <footer className="py-12 bg-[#e6dbcc] border-t border-[#6c5d84]/15 text-center relative z-20">
             <p className="font-title text-[#6c5d84] text-2xl">J & S</p>
           </footer>
         </>
@@ -803,36 +813,35 @@ export default function App() {
 
       {/* =========================================
           ADMIN DASHBOARD UI (Accessed ONLY via /admin)
-          Strictly Arial/default sans serif and Arial Heavy/bold for titles, using palette colors.
           ========================================= */}
       {isAdminRoute && (
-        <div className="min-h-screen p-4 flex flex-col items-center bg-[#fbf7ef] font-sans text-[#333036]">
+        <div className="min-h-screen p-4 flex flex-col items-center bg-[#e6dbcc] font-sans text-[#333036]">
           
           {!isAdmin && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[200]">
-              <form onSubmit={handleAdminLogin} className="bg-[#f5eee1] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#6c5d84] animate-in zoom-in-95">
+              <form onSubmit={handleAdminLogin} className="bg-[#dccfb9] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#6c5d84] animate-in zoom-in-95">
                 <Lock className="w-8 h-8 text-[#6c5d84] mb-4" />
                 <h3 className="font-sans font-bold text-2xl text-[#333036] mb-8">Admin Access</h3>
-                <input type="password" placeholder="Enter PIN" value={pin} onChange={(e) => setPin(e.target.value)} className="border border-[#333036]/30 bg-[#fbf7ef] px-4 py-3 text-center text-2xl tracking-widest focus:border-[#6c5d84] outline-none mb-8 w-56 font-sans font-bold text-[#333036]" autoFocus />
+                <input type="password" placeholder="Enter PIN" value={pin} onChange={(e) => setPin(e.target.value)} className="border border-[#333036]/30 bg-[#e6dbcc] px-4 py-3 text-center text-2xl tracking-widest focus:border-[#6c5d84] outline-none mb-8 w-56 font-sans font-bold text-[#333036]" autoFocus />
                 <div className="flex gap-4 w-full">
                   <button type="button" onClick={() => { window.location.href = '/'; }} className="flex-1 border border-[#333036]/30 text-[#333036] hover:bg-[#333036]/5 py-3 text-xs tracking-widest uppercase transition-colors font-sans font-bold">Back to Site</button>
-                  <button type="submit" className="flex-1 bg-[#6c5d84] text-[#fbf7ef] py-3 text-xs tracking-widest uppercase hover:bg-[#524569] transition-colors font-sans font-bold">Login</button>
+                  <button type="submit" className="flex-1 bg-[#6c5d84] text-[#e6dbcc] py-3 text-xs tracking-widest uppercase hover:bg-[#524569] transition-colors font-sans font-bold">Login</button>
                 </div>
               </form>
             </div>
           )}
 
           {isAdmin && (
-            <div className="w-full max-w-6xl bg-[#f5eee1] rounded-lg shadow-xl overflow-hidden min-h-[80vh] flex flex-col mt-4 border border-[#6c5d84]/20">
+            <div className="w-full max-w-6xl bg-[#dccfb9] rounded-lg shadow-xl overflow-hidden min-h-[80vh] flex flex-col mt-4 border border-[#6c5d84]/20">
               
-              <div className="bg-[#6c5d84] text-[#fbf7ef] p-6 flex justify-between items-center">
+              <div className="bg-[#6c5d84] text-[#e6dbcc] p-6 flex justify-between items-center">
                 <h2 className="font-sans font-bold text-2xl tracking-wide">Guest & RSVP Management</h2>
                 <a href="/" className="text-sm font-sans font-bold tracking-[0.1em] uppercase opacity-90 hover:opacity-100">Exit to Site</a>
               </div>
 
-              <div className="flex border-b border-[#333036]/15 bg-[#efe8dc] text-sm font-sans font-bold tracking-wide text-[#333036] overflow-x-auto">
-                <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#fbf7ef]' : 'hover:bg-[#f2ecdf]'}`}>Overview & Stats</button>
-                <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#fbf7ef]' : 'hover:bg-[#f2ecdf]'}`}>Guest List Editor</button>
+              <div className="flex border-b border-[#333036]/15 bg-[#d2c4ae] text-sm font-sans font-bold tracking-wide text-[#333036] overflow-x-auto">
+                <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Overview & Stats</button>
+                <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Guest List Editor</button>
               </div>
 
               {dashboardTab === 'stats' && (
@@ -844,23 +853,23 @@ export default function App() {
                       allUniqueEvents.map(eventName => {
                         const stats = calcStats(eventName);
                         return (
-                          <div key={eventName} className="bg-[#fbf7ef] p-6 rounded border border-[#6c5d84]/20">
+                          <div key={eventName} className="bg-[#e6dbcc] p-6 rounded border border-[#6c5d84]/20">
                             <h3 className="font-sans font-bold text-xl text-[#6c5d84] mb-6">{eventName}</h3>
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-[#f5eee1] p-4 rounded shadow-sm text-center border border-[#333036]/10">
+                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
                                 <p className="text-3xl text-[#333036] font-sans font-bold">{stats.total}</p>
                                 <p className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1 font-sans font-bold">Invited</p>
                               </div>
-                              <div className="bg-[#f5eee1] p-4 rounded shadow-sm text-center border border-[#333036]/10">
+                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
                                 <p className="text-3xl text-[#6c5d84] font-sans font-bold">{stats.yes}</p>
                                 <p className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1 font-sans font-bold">Accepted</p>
                               </div>
-                              <div className="bg-[#f5eee1] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p className="text-3xl text-[#d4a5a5] font-sans font-bold">{stats.no}</p>
+                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
+                                <p className="text-3xl text-[#333036] font-sans font-bold">{stats.no}</p>
                                 <p className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1 font-sans font-bold">Declined</p>
                               </div>
-                              <div className="bg-[#f5eee1] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p className="text-3xl text-[#b0c4de] font-sans font-bold">{stats.pending}</p>
+                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
+                                <p className="text-3xl text-[#333036] font-sans font-bold">{stats.pending}</p>
                                 <p className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1 font-sans font-bold">Pending</p>
                               </div>
                             </div>
@@ -872,7 +881,7 @@ export default function App() {
 
                   <div className="mt-8 pt-8 border-t border-[#333036]/15">
                     <h3 className="font-sans font-bold text-xl text-[#333036] mb-4">Bulk Upload Guests</h3>
-                    <label className="flex items-center gap-2 cursor-pointer bg-[#fbf7ef] border border-[#6c5d84] text-[#6c5d84] px-6 py-3 rounded-sm hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors w-max font-sans font-bold">
+                    <label className="flex items-center gap-2 cursor-pointer bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-6 py-3 rounded-sm hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors w-max font-sans font-bold">
                       <Upload className="w-5 h-5" />
                       <span className="uppercase tracking-wider text-sm">Select CSV File</span>
                       <input type="file" accept=".csv" onChange={processCsvUpload} className="hidden" />
@@ -884,49 +893,49 @@ export default function App() {
 
               {dashboardTab === 'list' && (
                 <div className="flex-1 flex flex-col max-h-[80vh] font-sans">
-                  <div className="p-4 border-b border-[#333036]/15 flex flex-wrap gap-4 justify-between items-center bg-[#efe8dc]">
+                  <div className="p-4 border-b border-[#333036]/15 flex flex-wrap gap-4 justify-between items-center bg-[#d2c4ae]">
                     <div className="relative flex-1 max-w-md">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333036]/50 w-4 h-4" />
-                      <input type="text" placeholder="Search by Name, Household, or ID..." value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-[#333036]/30 bg-[#fbf7ef] rounded outline-none focus:border-[#6c5d84] text-sm text-[#333036] font-sans" />
+                      <input type="text" placeholder="Search by Name, Household, or ID..." value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] text-sm text-[#333036] font-sans" />
                       {dashboardSearch && <button onClick={() => setDashboardSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333036]/50 hover:text-[#333036]"><X className="w-4 h-4" /></button>}
                     </div>
                     <div className="flex gap-4 font-sans font-bold">
-                      <button onClick={handleOpenAddForm} className="flex items-center gap-2 bg-[#6c5d84] text-[#fbf7ef] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#524569] transition-colors"><UserPlus className="w-4 h-4" /> Add Household</button>
-                      <button onClick={exportToCsv} className="flex items-center gap-2 bg-[#fbf7ef] border border-[#6c5d84] text-[#6c5d84] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#efe8dc] transition-colors"><Download className="w-4 h-4" /> Export CSV</button>
+                      <button onClick={handleOpenAddForm} className="flex items-center gap-2 bg-[#6c5d84] text-[#e6dbcc] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#524569] transition-colors"><UserPlus className="w-4 h-4" /> Add Household</button>
+                      <button onClick={exportToCsv} className="flex items-center gap-2 bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#d2c4ae] transition-colors"><Download className="w-4 h-4" /> Export CSV</button>
                     </div>
                   </div>
 
                   {showAddForm && (
-                    <div className="bg-[#efe8dc] p-6 border-b border-[#333036]/15 font-sans">
+                    <div className="bg-[#d2c4ae] p-6 border-b border-[#333036]/15 font-sans">
                       <div className="flex justify-between items-start mb-4">
                         <h3 className="font-sans font-bold text-lg text-[#333036]">Add New Guests</h3>
                         <div className="text-right">
                           <p className="text-xs text-[#333036]/70 uppercase tracking-widest font-sans font-bold">Household #</p>
-                          <input type="text" value={newHouseholdId} onChange={(e) => setNewHouseholdId(e.target.value)} className="w-24 text-sm p-1 border border-[#333036]/30 bg-[#fbf7ef] rounded outline-none focus:border-[#6c5d84] text-center font-sans" />
+                          <input type="text" value={newHouseholdId} onChange={(e) => setNewHouseholdId(e.target.value)} className="w-24 text-sm p-1 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] text-center font-sans" />
                         </div>
                       </div>
                       <div className="space-y-4">
-                        <input type="text" placeholder="Household Name (e.g. The Doe Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="w-full md:w-1/2 p-2 border border-[#333036]/30 bg-[#fbf7ef] rounded outline-none focus:border-[#6c5d84] font-sans" />
-                        <div className="flex items-center gap-2 bg-[#fbf7ef] p-3 rounded border border-[#333036]/20 shadow-sm w-full md:w-1/2">
+                        <input type="text" placeholder="Household Name (e.g. The Doe Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="w-full md:w-1/2 p-2 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] font-sans" />
+                        <div className="flex items-center gap-2 bg-[#e6dbcc] p-3 rounded border border-[#333036]/20 shadow-sm w-full md:w-1/2">
                           <span className="text-xs uppercase text-[#333036]/70 font-sans font-bold">Create New Event Type:</span>
                           <input type="text" placeholder="e.g. Sangeet" value={newCustomEvent} onChange={(e) => setNewCustomEvent(e.target.value)} className="flex-1 text-sm p-1 border-b border-[#333036]/30 bg-transparent outline-none focus:border-[#6c5d84] font-sans" />
-                          <button onClick={handleAddCustomEventToForm} className="text-xs bg-[#efe8dc] px-3 py-1 rounded hover:bg-[#dcd3c5] transition-colors font-sans font-bold">Add</button>
+                          <button onClick={handleAddCustomEventToForm} className="text-xs bg-[#d2c4ae] px-3 py-1 rounded hover:bg-[#c4b59f] transition-colors font-sans font-bold">Add</button>
                         </div>
 
                         {newMembers.map((member, index) => (
-                          <div key={index} className="flex flex-col gap-4 bg-[#fbf7ef] p-4 rounded border border-[#333036]/20 shadow-sm font-sans">
+                          <div key={index} className="flex flex-col gap-4 bg-[#e6dbcc] p-4 rounded border border-[#333036]/20 shadow-sm font-sans">
                             <div className="flex flex-wrap items-center gap-4">
-                              <input type="text" placeholder="Guest Full Name" value={member.name} onChange={(e) => handleUpdateMember(index, 'name', e.target.value)} className="flex-1 min-w-[200px] p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#fbf7ef] font-sans" />
-                              <select value={member.ageRange} onChange={(e) => handleUpdateMember(index, 'ageRange', e.target.value)} className="p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#fbf7ef] font-sans">
+                              <input type="text" placeholder="Guest Full Name" value={member.name} onChange={(e) => handleUpdateMember(index, 'name', e.target.value)} className="flex-1 min-w-[200px] p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#e6dbcc] font-sans" />
+                              <select value={member.ageRange} onChange={(e) => handleUpdateMember(index, 'ageRange', e.target.value)} className="p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#e6dbcc] font-sans">
                                 <option value="Adult">Adult</option><option value="Child">Child</option><option value="Infant">Infant</option>
                               </select>
-                              {newMembers.length > 1 && <button onClick={() => handleRemoveMemberRow(index)} className="text-[#d4a5a5] hover:text-[#333036] ml-auto"><Trash2 className="w-5 h-5" /></button>}
+                              {newMembers.length > 1 && <button onClick={() => handleRemoveMemberRow(index)} className="text-[#333036]/70 hover:text-[#333036] ml-auto"><Trash2 className="w-5 h-5" /></button>}
                             </div>
                             <div className="flex flex-wrap items-center gap-4 border-t border-[#333036]/10 pt-3">
                               <span className="text-xs uppercase text-[#333036]/60 w-full md:w-auto font-sans font-bold">Invited To:</span>
                               {formAvailableEvents.length === 0 && <span className="text-xs text-[#333036]/50 italic font-sans">No events defined yet. Add one above.</span>}
                               {formAvailableEvents.map(evt => (
-                                <label key={evt} className="flex items-center gap-1.5 text-sm text-[#333036] cursor-pointer bg-[#efe8dc] px-2 py-1 rounded border border-[#333036]/20 font-sans">
+                                <label key={evt} className="flex items-center gap-1.5 text-sm text-[#333036] cursor-pointer bg-[#d2c4ae] px-2 py-1 rounded border border-[#333036]/20 font-sans">
                                   <input type="checkbox" checked={member.events.includes(evt)} onChange={() => handleUpdateMember(index, 'events', evt)} className="accent-[#6c5d84]" /> {evt}
                                 </label>
                               ))}
@@ -935,27 +944,27 @@ export default function App() {
                         ))}
                         <div className="flex gap-4 pt-2 font-sans font-bold">
                           <button onClick={handleAddMemberRow} className="text-[#6c5d84] text-sm uppercase tracking-wider flex items-center gap-1 hover:text-[#333036]"><Plus className="w-4 h-4" /> Add Person to Household</button>
-                          <button onClick={submitNewHousehold} className="bg-[#6c5d84] text-[#fbf7ef] px-6 py-2 rounded-sm text-sm uppercase tracking-wider ml-auto hover:bg-[#524569]">Save to Guest List</button>
+                          <button onClick={submitNewHousehold} className="bg-[#6c5d84] text-[#e6dbcc] px-6 py-2 rounded-sm text-sm uppercase tracking-wider ml-auto hover:bg-[#524569]">Save to Guest List</button>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  <div className="flex-1 overflow-auto bg-[#fbf7ef] font-sans">
+                  <div className="flex-1 overflow-auto bg-[#e6dbcc] font-sans">
                     <table className="w-full text-left border-collapse min-w-max font-sans">
-                      <thead className="sticky top-0 bg-[#efe8dc] border-b border-[#333036]/20 z-10 shadow-sm text-xs uppercase tracking-wider text-[#333036] font-sans font-bold">
+                      <thead className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 shadow-sm text-xs uppercase tracking-wider text-[#333036] font-sans font-bold">
                         <tr>
-                          <th onClick={() => handleSort('name')} className="px-6 py-4 cursor-pointer hover:bg-[#e2d8c9] transition-colors">Guest Name <SortIndicator columnKey="name" /></th>
-                          <th onClick={() => handleSort('householdId')} className="px-6 py-4 cursor-pointer hover:bg-[#e2d8c9] transition-colors">Household <SortIndicator columnKey="householdId" /></th>
-                          <th onClick={() => handleSort('ageRange')} className="px-6 py-4 cursor-pointer hover:bg-[#e2d8c9] transition-colors">Age Range <SortIndicator columnKey="ageRange" /></th>
+                          <th onClick={() => handleSort('name')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Guest Name <SortIndicator columnKey="name" /></th>
+                          <th onClick={() => handleSort('householdId')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Household <SortIndicator columnKey="householdId" /></th>
+                          <th onClick={() => handleSort('ageRange')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Age Range <SortIndicator columnKey="ageRange" /></th>
                           {allUniqueEvents.map(evt => (
-                            <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-4 text-center cursor-pointer hover:bg-[#e2d8c9] transition-colors">{evt} <SortIndicator columnKey={evt} /></th>
+                            <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-4 text-center cursor-pointer hover:bg-[#c4b59f] transition-colors">{evt} <SortIndicator columnKey={evt} /></th>
                           ))}
                         </tr>
                       </thead>
                       <tbody className="text-[#333036] font-sans">
                         {processedGuests.map((guest) => (
-                          <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#f5eee1] transition-colors font-sans">
+                          <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#dfd4c3] transition-colors font-sans">
                             <td className="px-6 py-3 font-sans font-bold text-[#333036]">{guest.name}</td>
                             <td className="px-6 py-3 font-sans">{guest.household} <span className="block text-xs text-[#333036]/60 mt-0.5 font-sans">ID: {guest.householdId}</span></td>
                             <td className="px-6 py-3 text-sm text-[#333036]/80 font-sans">{guest.ageRange || 'Adult'}</td>
@@ -964,7 +973,7 @@ export default function App() {
                               const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
                               return (
                                 <td key={evt} className="px-6 py-3 text-center border-l border-[#333036]/10 font-sans">
-                                  <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} className={`text-xs uppercase tracking-wider font-sans font-bold outline-none cursor-pointer border px-2 py-1 rounded transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/15 text-[#6c5d84] border-[#6c5d84]/40' : status === 'no' ? 'bg-[#d4a5a5]/25 text-[#333036] border-[#d4a5a5]/50' : status === 'not_invited' ? 'bg-[#efe8dc] text-[#333036]/50 border-transparent hover:border-[#333036]/30' : 'bg-[#b0c4de]/25 text-[#333036] border-[#b0c4de]/50'}`}>
+                                  <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} className={`text-xs uppercase tracking-wider font-sans font-bold outline-none cursor-pointer border px-2 py-1 rounded transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/20 text-[#6c5d84] border-[#6c5d84]/50' : status === 'no' ? 'bg-[#d4a5a5]/30 text-[#333036] border-[#d4a5a5]/60' : status === 'not_invited' ? 'bg-[#d2c4ae] text-[#333036]/50 border-transparent hover:border-[#333036]/30' : 'bg-[#b0c4de]/30 text-[#333036] border-[#b0c4de]/60'}`}>
                                     <option value="not_invited">Not Invited</option>
                                     <option value="pending">Pending</option>
                                     <option value="yes">Accepted</option>
