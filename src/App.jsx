@@ -99,6 +99,49 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
 };
 
 // --------------------------------------------------------
+// ISOLATED COUNTDOWN COMPONENT (Prevents whole-app re-renders)
+// --------------------------------------------------------
+const CountdownTimer = ({ targetDate }) => {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+      if (distance > 0) {
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+      {[
+        { label: 'Days', value: timeLeft.days, delay: 0 },
+        { label: 'Hours', value: timeLeft.hours, delay: 100 },
+        { label: 'Minutes', value: timeLeft.minutes, delay: 200 },
+        { label: 'Seconds', value: timeLeft.seconds, delay: 300 }
+      ].map((item) => (
+        <RevealOnScroll key={item.label} delay={item.delay}>
+          <div className="space-y-2">
+            <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#e6dbcc] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
+            <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#e6dbcc]">{item.label}</p>
+          </div>
+        </RevealOnScroll>
+      ))}
+    </div>
+  );
+};
+
+// --------------------------------------------------------
 // 2. MAIN APP COMPONENT
 // --------------------------------------------------------
 export default function App() {
@@ -139,7 +182,6 @@ export default function App() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showStickyHeader, setShowStickyHeader] = useState(false);
-  const [timeLeft, setTimeLeft] = useState({});
   
   const heroBgRef = useRef(null);
   const registrySectionRef = useRef(null);
@@ -218,53 +260,55 @@ export default function App() {
     handleSaveEventOrder(newOrder);
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = weddingDate - now;
-      if (distance > 0) {
-        setTimeLeft({
-          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-          seconds: Math.floor((distance % (1000 * 60)) / 1000)
-        });
-      } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [weddingDate]);
-
-  // ORIGINAL STABLE PARALLAX IMPLEMENTATION
+  // HIGH-PERFORMANCE NON-THRASHING PARALLAX ENGINE
   useEffect(() => {
     if (isAdminRoute) return; 
     let ticking = false;
+    
+    // Cache the offsets to absolutely zero-out layout thrashing
+    let registryTop = 0;
+    let rsvpTop = 0;
+
+    const updateOffsets = () => {
+      if (registrySectionRef.current) registryTop = registrySectionRef.current.offsetTop;
+      if (rsvpSectionRef.current) rsvpTop = rsvpSectionRef.current.offsetTop;
+    };
+
+    // Give the DOM a tiny fraction of a second to paint before caching offsets
+    setTimeout(updateOffsets, 100);
+    window.addEventListener('resize', updateOffsets, { passive: true });
+
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const scrollPos = window.scrollY;
-          setShowStickyHeader(scrollPos > window.innerHeight * 0.5);
+          const scrollY = window.scrollY;
+          setShowStickyHeader(scrollY > window.innerHeight * 0.5);
 
+          // Apply 3D transforms using strictly cached values and scrollY (No layout reads)
           if (heroBgRef.current) {
-            heroBgRef.current.style.transform = `translate3d(0, ${scrollPos * 0.4}px, 0)`;
+            heroBgRef.current.style.transform = `translate3d(0px, ${scrollY * 0.35}px, 0px)`;
           }
-          if (registrySectionRef.current && registryBgRef.current) {
-            const rect = registrySectionRef.current.getBoundingClientRect();
-            registryBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
+          if (registryBgRef.current) {
+            const offset = scrollY - registryTop;
+            registryBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
           }
-          if (rsvpSectionRef.current && rsvpBgRef.current) {
-            const rect = rsvpSectionRef.current.getBoundingClientRect();
-            rsvpBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
+          if (rsvpBgRef.current) {
+            const offset = scrollY - rsvpTop;
+            rsvpBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
           }
           ticking = false;
         });
         ticking = true;
       }
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll(); 
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updateOffsets);
+    };
   }, [isAdminRoute]);
 
   const scrollToSection = (id) => {
@@ -703,8 +747,18 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* ORIGINAL PARALLAX DIVS */}
-            <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
+            {/* Added GPU acceleration CSS properties to ensure buttery smooth performance */}
+            <div 
+              ref={heroBgRef} 
+              className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
+              style={{ 
+                backgroundImage: "url('/hero.jpg')", 
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transformStyle: 'preserve-3d'
+              }}
+            ></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
@@ -834,21 +888,9 @@ export default function App() {
                 <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#e6dbcc]">Counting down the days</p>
               </RevealOnScroll>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-                {[
-                  { label: 'Days', value: timeLeft.days, delay: 0 },
-                  { label: 'Hours', value: timeLeft.hours, delay: 100 },
-                  { label: 'Minutes', value: timeLeft.minutes, delay: 200 },
-                  { label: 'Seconds', value: timeLeft.seconds, delay: 300 }
-                ].map((item) => (
-                  <RevealOnScroll key={item.label} delay={item.delay}>
-                    <div className="space-y-2">
-                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#e6dbcc] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
-                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#e6dbcc]">{item.label}</p>
-                    </div>
-                  </RevealOnScroll>
-                ))}
-              </div>
+              {/* Isolated Countdown Component that prevents whole page from re-rendering */}
+              <CountdownTimer targetDate={weddingDate} />
+              
             </div>
           </section>
 
@@ -878,8 +920,17 @@ export default function App() {
           </section>
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
-            {/* ORIGINAL PARALLAX DIVS */}
-            <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
+            <div 
+              ref={registryBgRef} 
+              className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
+              style={{ 
+                backgroundImage: "url('/registry.jpg')", 
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transformStyle: 'preserve-3d'
+              }}
+            ></div>
             <RevealOnScroll delay={0} className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
@@ -915,10 +966,18 @@ export default function App() {
             </div>
           </section>
 
-          {/* RSVP SECTION WITH FLORAL BACKGROUND AND PARALLAX */}
           <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
-            {/* ORIGINAL PARALLAX DIVS */}
-            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}></div>
+            <div 
+              ref={rsvpBgRef} 
+              className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
+              style={{ 
+                backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')", 
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                WebkitBackfaceVisibility: 'hidden',
+                transformStyle: 'preserve-3d'
+              }}
+            ></div>
             <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
 
             <div className="max-w-xl w-full text-center relative z-20">
