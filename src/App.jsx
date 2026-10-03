@@ -469,7 +469,6 @@ export default function App() {
                 { name: 'Home', id: 'home' },
                 { name: 'Details', id: 'details' },
                 { name: 'Travel', id: 'travel' },
-                { name: 'Activities', id: 'activities' },
                 { name: 'Registry', id: 'registry' },
                 { name: 'FAQ', id: 'faq' },
                 { name: 'RSVP', id: 'rsvp' }
@@ -507,7 +506,7 @@ export default function App() {
                 <RevealOnScroll delay={100} className="space-y-2">
                   <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">When</p>
                   <p className="font-title text-4xl md:text-5xl text-[#723332]">Saturday, May 29th</p>
-                  <p className="font-details text-2xl text-[#723332] italic mt-2">Ten O'Clock in the morning</p>
+                  <p className="font-details text-xl text-[#4b483c] tracking-wide mt-2">Ten O'Clock in the Morning</p>
                 </RevealOnScroll>
                 <RevealOnScroll delay={200} className="space-y-2">
                   <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">Where</p>
@@ -566,6 +565,31 @@ export default function App() {
             </div>
           </section>
 
+          {/* COUNTDOWN SECTION - Inserted After Travel */}
+          <section className="py-24 bg-[#723332] text-[#f1ece0] relative z-20">
+            <div className="max-w-4xl mx-auto px-6 text-center">
+              <RevealOnScroll>
+                <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm mb-12 opacity-80">Counting down the days</p>
+              </RevealOnScroll>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+                {[
+                  { label: 'Days', value: timeLeft.days, delay: 0 },
+                  { label: 'Hours', value: timeLeft.hours, delay: 100 },
+                  { label: 'Minutes', value: timeLeft.minutes, delay: 200 },
+                  { label: 'Seconds', value: timeLeft.seconds, delay: 300 }
+                ].map((item) => (
+                  <RevealOnScroll key={item.label} delay={item.delay}>
+                    <div className="space-y-2">
+                      <p className="font-title text-6xl md:text-7xl font-light">{item.value !== undefined ? item.value : '00'}</p>
+                      <p className="font-subtitle tracking-[0.15em] uppercase text-xs opacity-70">{item.label}</p>
+                    </div>
+                  </RevealOnScroll>
+                ))}
+              </div>
+            </div>
+          </section>
+
           <section id="activities" className="py-32 px-6 md:px-12 bg-white">
             <div className="max-w-5xl mx-auto">
               <RevealOnScroll className="text-center mb-16">
@@ -605,7 +629,7 @@ export default function App() {
           <section id="faq" className="py-32 px-6 md:px-12 bg-white">
             <div className="max-w-3xl mx-auto">
               <RevealOnScroll className="text-center mb-16">
-                <h2 className="font-title text-5xl md:text-7xl text-[#723332] mb-6">F.A.Q.</h2>
+                <h2 className="font-title text-5xl md:text-7xl text-[#723332] mb-6">FAQ</h2>
                 <div className="h-px w-24 bg-[#4b483c] mx-auto"></div>
               </RevealOnScroll>
               <div className="space-y-12">
