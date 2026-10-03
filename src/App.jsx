@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, X, Lock, Upload, Download, CheckCircle2, XCircle, Circle, Plus, Trash2, UserPlus, ArrowUpDown, ChevronUp, ChevronDown, Menu } from 'lucide-react';
+import { Search, X, Lock, Upload, Download, CheckCircle2, XCircle, Circle, Plus, Trash2, UserPlus, ArrowUpDown, ChevronUp, ChevronDown, Menu, Edit2, Check, Users, Home } from 'lucide-react';
 import Papa from 'papaparse';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, deleteField } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, deleteField, setDoc } from 'firebase/firestore';
 
 // --------------------------------------------------------
 // 1. FIREBASE CONFIGURATION
@@ -85,6 +85,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
 // --------------------------------------------------------
 export default function App() {
   const [guests, setGuests] = useState([]);
+  const [households, setHouseholds] = useState([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -101,9 +102,19 @@ export default function App() {
   
   const [allUniqueEvents, setAllUniqueEvents] = useState([]);
 
+  // Safety edit state trackers for admin rows/cards
+  const [editingGuestId, setEditingGuestId] = useState(null);
+  const [tempGuestData, setTempGuestData] = useState({});
+
+  const [editingHouseholdId, setEditingHouseholdId] = useState(null);
+  const [tempHouseholdData, setTempHouseholdData] = useState({});
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [newHouseholdName, setNewHouseholdName] = useState('');
   const [newHouseholdId, setNewHouseholdId] = useState('');
+  const [newHouseholdEmail, setNewHouseholdEmail] = useState('');
+  const [newHouseholdPhone, setNewHouseholdPhone] = useState('');
+  const [newHouseholdAddress, setNewHouseholdAddress] = useState('');
   const [newCustomEvent, setNewCustomEvent] = useState('');
   const [formAvailableEvents, setFormAvailableEvents] = useState([]);
   const [newMembers, setNewMembers] = useState([{ name: '', ageRange: 'Adult', events: [] }]);
@@ -127,15 +138,25 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
 
     signInAnonymously(auth).catch(error => console.error("Auth error:", error));
-    const unsubscribe = onSnapshot(collection(db, 'guests'), (snapshot) => {
+    
+    // Listen to Guests collection
+    const unsubGuests = onSnapshot(collection(db, 'guests'), (snapshot) => {
       const guestData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGuests(guestData);
       const uniqueEvents = Array.from(new Set(guestData.flatMap(g => g.events || []))).sort();
       setAllUniqueEvents(uniqueEvents);
       setFormAvailableEvents(prev => Array.from(new Set([...prev, ...uniqueEvents])).sort());
     });
+
+    // Listen to Households collection
+    const unsubHouseholds = onSnapshot(collection(db, 'households'), (snapshot) => {
+      const hhData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setHouseholds(hhData);
+    });
+
     return () => {
-      unsubscribe();
+      unsubGuests();
+      unsubHouseholds();
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
@@ -255,10 +276,13 @@ export default function App() {
     await updateDoc(guestRef, { [`rsvps.${eventName}`]: answer });
   };
 
-  const generateHouseholdId = () => Math.floor(100000 + Math.random() * 900000).toString();
+  const generateHouseholdId = () => Math.floor(1000 + Math.random() * 9000).toString();
 
   const handleOpenAddForm = () => {
     setNewHouseholdId(generateHouseholdId());
+    setNewHouseholdEmail('');
+    setNewHouseholdPhone('');
+    setNewHouseholdAddress('');
     setNewMembers([{ name: '', ageRange: 'Adult', events: allUniqueEvents.length > 0 ? [allUniqueEvents[0]] : [] }]);
     setShowAddForm(!showAddForm);
   };
@@ -299,6 +323,52 @@ export default function App() {
     }
   };
 
+  // Safe Single-Item Guest Update
+  const startEditingGuest = (guest) => {
+    setEditingGuestId(guest.id);
+    setTempGuestData({ name: guest.name, householdId: guest.householdId });
+  };
+
+  const saveGuestEdits = async (guestId) => {
+    const guestRef = doc(db, 'guests', guestId);
+    const targetHh = households.find(h => h.householdId === tempGuestData.householdId);
+    
+    await updateDoc(guestRef, {
+      name: tempGuestData.name,
+      householdId: tempGuestData.householdId,
+      household: targetHh ? targetHh.name : 'Unassigned'
+    });
+    setEditingGuestId(null);
+  };
+
+  // Safe Single-Item Household Update
+  const startEditingHousehold = (hh) => {
+    setEditingHouseholdId(hh.id);
+    setTempHouseholdData({ name: hh.name, email: hh.email || '', phone: hh.phone || '', address: hh.address || '' });
+  };
+
+  const saveHouseholdEdits = async (hhId, oldHouseholdId) => {
+    const batch = writeBatch(db);
+    const hhRef = doc(db, 'households', hhId);
+    
+    batch.update(hhRef, {
+      name: tempHouseholdData.name,
+      email: tempHouseholdData.email,
+      phone: tempHouseholdData.phone,
+      address: tempHouseholdData.address
+    });
+
+    // Cascade name update to all guests linked to this householdId
+    const linkedGuests = guests.filter(g => g.householdId === oldHouseholdId);
+    linkedGuests.forEach(g => {
+      const gRef = doc(db, 'guests', g.id);
+      batch.update(gRef, { household: tempHouseholdData.name });
+    });
+
+    await batch.commit();
+    setEditingHouseholdId(null);
+  };
+
   const processCsvUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -313,6 +383,16 @@ export default function App() {
           if (!row.Name || !row.Household) return;
           const eventsArray = row.Events ? row.Events.split(',').map(e => e.trim()).filter(e => e) : [];
           const rowHouseholdId = row['Household #'] || row.Household;
+
+          // Sync or create household document
+          const hhRef = doc(db, 'households', rowHouseholdId);
+          batch.set(hhRef, {
+            householdId: rowHouseholdId,
+            name: row.Household,
+            email: row['Email'] || '',
+            phone: row['Phone'] || '',
+            address: row['Address'] || ''
+          }, { merge: true });
 
           const rsvpsToPreload = {};
           Object.keys(row).forEach(key => {
@@ -350,7 +430,7 @@ export default function App() {
         });
         
         await batch.commit();
-        alert('Guest list synced successfully! RSVPs have been updated.');
+        alert('Guest list and households synced successfully!');
         event.target.value = ''; 
       }
     });
@@ -380,6 +460,18 @@ export default function App() {
       return;
     }
     const batch = writeBatch(db);
+    
+    // Create Household doc
+    const hhRef = doc(db, 'households', newHouseholdId);
+    batch.set(hhRef, {
+      householdId: newHouseholdId,
+      name: newHouseholdName,
+      email: newHouseholdEmail,
+      phone: newHouseholdPhone,
+      address: newHouseholdAddress
+    });
+
+    // Create Guest docs linked to household
     newMembers.forEach(member => {
       const newRef = doc(collection(db, 'guests'));
       batch.set(newRef, {
@@ -391,19 +483,27 @@ export default function App() {
         rsvps: {}
       });
     });
+    
     await batch.commit();
     setNewHouseholdName('');
     setNewHouseholdId('');
+    setNewHouseholdEmail('');
+    setNewHouseholdPhone('');
+    setNewHouseholdAddress('');
     setNewMembers([{ name: '', ageRange: 'Adult', events: [] }]);
     setShowAddForm(false);
   };
 
   const exportToCsv = () => {
     const dataForExport = processedGuests.map(g => {
+      const hh = households.find(h => h.householdId === g.householdId);
       const row = {
         Name: g.name,
         Household: g.household,
         'Household #': g.householdId,
+        'Email': hh?.email || '',
+        'Phone': hh?.phone || '',
+        'Address': hh?.address || '',
         'Age Range': g.ageRange || '',
         'Invited Events (Raw)': (g.events || []).join(', ')
       };
@@ -441,7 +541,6 @@ export default function App() {
       const key = sortConfig.key;
 
       if (key === 'householdId') {
-        // Parse strictly as integer for numerical sorting (1, 2, 3, 4, 388)
         aValue = parseInt(a.householdId, 10);
         bValue = parseInt(b.householdId, 10);
         if (isNaN(aValue)) aValue = 0;
@@ -462,7 +561,6 @@ export default function App() {
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       }
 
-      // Secondary fallback sort: numerical householdId then guest name
       if (key !== 'householdId') {
         const hA = parseInt(a.householdId, 10) || 0;
         const hB = parseInt(b.householdId, 10) || 0;
@@ -492,9 +590,6 @@ export default function App() {
     return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1 inline text-[#6c5d84]"/> : <ChevronDown className="w-4 h-4 ml-1 inline text-[#6c5d84]"/>;
   };
 
-  // --------------------------------------------------------
-  // RENDER UI
-  // --------------------------------------------------------
   return (
     <div className="bg-[#e6dbcc] text-[#333036] font-details selection:bg-[#d4a5a5] selection:text-[#e6dbcc] overflow-x-hidden">
       
@@ -875,6 +970,7 @@ export default function App() {
               <div className="flex border-b border-[#333036]/15 bg-[#d2c4ae] text-xs tracking-[0.15em] uppercase text-[#333036] overflow-x-auto" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
                 <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Overview & Stats</button>
                 <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Guest List Editor</button>
+                <button onClick={() => setDashboardTab('households')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'households' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Household Directory</button>
               </div>
 
               {dashboardTab === 'stats' && (
@@ -919,7 +1015,7 @@ export default function App() {
                       <span>Select CSV File</span>
                       <input type="file" accept=".csv" onChange={processCsvUpload} className="hidden" />
                     </label>
-                    <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-[11px] text-[#333036]/70 mt-2">Required columns: Name, Household, Events. Optional: Household #, Age Range.</p>
+                    <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-[11px] text-[#333036]/70 mt-2">Required columns: Name, Household, Events. Optional: Household #, Age Range, Email, Phone, Address.</p>
                   </div>
                 </div>
               )}
@@ -941,14 +1037,20 @@ export default function App() {
                   {showAddForm && (
                     <div className="bg-[#d2c4ae] p-6 border-b border-[#333036]/15" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                       <div className="flex justify-between items-start mb-4">
-                        <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.15em] text-[#333036]">Add New Household</h3>
+                        <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.15em] text-[#333036]">Add New Household & Guests</h3>
                         <div className="text-right">
                           <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] text-[#333036]/70 uppercase tracking-widest">Household #</p>
                           <input type="text" value={newHouseholdId} onChange={(e) => setNewHouseholdId(e.target.value)} className="w-20 text-xs p-1.5 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-center font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
                         </div>
                       </div>
                       <div className="space-y-4">
-                        <input type="text" placeholder="Household Name (e.g. The Smith Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="w-full md:w-1/2 p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                        <div className="grid md:grid-cols-3 gap-3">
+                          <input type="text" placeholder="Household Name (e.g. Smith Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                          <input type="text" placeholder="Email Address" value={newHouseholdEmail} onChange={(e) => setNewHouseholdEmail(e.target.value)} className="p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                          <input type="text" placeholder="Phone Number" value={newHouseholdPhone} onChange={(e) => setNewHouseholdPhone(e.target.value)} className="p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                        </div>
+                        <input type="text" placeholder="Mailing Address" value={newHouseholdAddress} onChange={(e) => setNewHouseholdAddress(e.target.value)} className="w-full p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+
                         <div className="flex items-center gap-2 bg-[#e6dbcc] p-3 rounded-sm border border-[#333036]/15 w-full md:w-1/2">
                           <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider text-[#333036]/70">Event:</span>
                           <input type="text" placeholder="e.g. Sangeet" value={newCustomEvent} onChange={(e) => setNewCustomEvent(e.target.value)} className="flex-1 text-xs p-1 border-b border-[#333036]/20 bg-transparent outline-none focus:border-[#6c5d84] font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
@@ -983,40 +1085,96 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* GUEST LIST EDITOR TABLE WITH RELATIONAL REASSIGNMENT & SAFE EDITING */}
                   <div className="flex-1 overflow-auto bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     <table className="w-full text-left border-collapse min-w-max">
                       <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 text-[10px] uppercase tracking-[0.2em] text-[#333036]">
                         <tr>
                           <th onClick={() => handleSort('name')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Guest Name <SortIndicator columnKey="name"/></th>
-                          <th onClick={() => handleSort('householdId')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Household <SortIndicator columnKey="householdId"/></th>
+                          <th onClick={() => handleSort('householdId')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Household Assignment <SortIndicator columnKey="householdId"/></th>
                           <th onClick={() => handleSort('ageRange')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Age Range <SortIndicator columnKey="ageRange"/></th>
                           {allUniqueEvents.map(evt => (
                             <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-3.5 text-center cursor-pointer hover:bg-[#c4b59f] transition-colors">{evt} <SortIndicator columnKey={evt}/></th>
                           ))}
+                          <th className="px-6 py-3.5 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }}>
-                        {processedGuests.map((guest) => (
-                          <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#dfd4c3] transition-colors">
-                            <td style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="px-6 py-3 text-[#333036]">{guest.name}</td>
-                            <td className="px-6 py-3">{guest.household} <span className="block text-[10px] text-[#333036]/60 mt-0.5 font-light">ID: {guest.householdId}</span></td>
-                            <td className="px-6 py-3 text-[#333036]/80">{guest.ageRange || 'Adult'}</td>
-                            {allUniqueEvents.map(evt => {
-                              const isInvited = guest.events?.includes(evt);
-                              const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
-                              return (
-                                <td key={evt} className="px-6 py-3 text-center border-l border-[#333036]/10">
-                                  <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className={`text-[10px] uppercase tracking-wider outline-none cursor-pointer border px-2 py-1 rounded-sm transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/15 text-[#6c5d84] border-[#6c5d84]/40' : status === 'no' ? 'bg-[#d4a5a5]/30 text-[#333036] border-[#d4a5a5]/60' : status === 'not_invited' ? 'bg-[#d2c4ae] text-[#333036]/40 border-transparent hover:border-[#333036]/20' : 'bg-[#b0c4de]/30 text-[#333036] border-[#b0c4de]/60'}`}>
-                                    <option value="not_invited">Not Invited</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="yes">Accepted</option>
-                                    <option value="no">Declined</option>
+                        {processedGuests.map((guest) => {
+                          const isEditing = editingGuestId === guest.id;
+                          return (
+                            <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#dfd4c3] transition-colors">
+                              
+                              {/* Guest Name Column */}
+                              <td className="px-6 py-3">
+                                {isEditing ? (
+                                  <input 
+                                    type="text" 
+                                    value={tempGuestData.name} 
+                                    onChange={(e) => setTempGuestData({ ...tempGuestData, name: e.target.value })} 
+                                    className="border border-[#6c5d84] bg-[#e6dbcc] px-2 py-1 text-xs rounded-sm outline-none w-full"
+                                    style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}
+                                  />
+                                ) : (
+                                  <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[#333036]">{guest.name}</span>
+                                )}
+                              </td>
+
+                              {/* Household Assignment Column (Relational Dropdown) */}
+                              <td className="px-6 py-3">
+                                {isEditing ? (
+                                  <select 
+                                    value={tempGuestData.householdId} 
+                                    onChange={(e) => setTempGuestData({ ...tempGuestData, householdId: e.target.value })}
+                                    className="border border-[#6c5d84] bg-[#e6dbcc] px-2 py-1 text-xs rounded-sm outline-none w-full font-light"
+                                  >
+                                    {households.map(h => (
+                                      <option key={h.id} value={h.householdId}>#{h.householdId} - {h.name}</option>
+                                    ))}
                                   </select>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
+                                ) : (
+                                  <div>
+                                    <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 500 }}>{guest.household}</span>
+                                    <span className="block text-[10px] text-[#333036]/60 font-light">ID: #{guest.householdId}</span>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Age Range Column */}
+                              <td className="px-6 py-3 text-[#333036]/80">{guest.ageRange || 'Adult'}</td>
+
+                              {/* Event Status Dropdowns */}
+                              {allUniqueEvents.map(evt => {
+                                const isInvited = guest.events?.includes(evt);
+                                const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
+                                return (
+                                  <td key={evt} className="px-6 py-3 text-center border-l border-[#333036]/10">
+                                    <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className={`text-[10px] uppercase tracking-wider outline-none cursor-pointer border px-2 py-1 rounded-sm transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/15 text-[#6c5d84] border-[#6c5d84]/40' : status === 'no' ? 'bg-[#d4a5a5]/30 text-[#333036] border-[#d4a5a5]/60' : status === 'not_invited' ? 'bg-[#d2c4ae] text-[#333036]/40 border-transparent hover:border-[#333036]/20' : 'bg-[#b0c4de]/30 text-[#333036] border-[#b0c4de]/60'}`}>
+                                      <option value="not_invited">Not Invited</option>
+                                      <option value="pending">Pending</option>
+                                      <option value="yes">Accepted</option>
+                                      <option value="no">Declined</option>
+                                    </select>
+                                  </td>
+                                );
+                              })}
+
+                              {/* Safe Edit Action Toggle */}
+                              <td className="px-6 py-3 text-center">
+                                {isEditing ? (
+                                  <button onClick={() => saveGuestEdits(guest.id)} className="bg-[#6c5d84] text-[#e6dbcc] p-1.5 rounded-sm hover:bg-[#524569] transition-colors inline-flex items-center justify-center">
+                                    <Check className="w-3.5 h-3.5 stroke-[2]"/>
+                                  </button>
+                                ) : (
+                                  <button onClick={() => startEditingGuest(guest)} className="border border-[#6c5d84]/40 text-[#6c5d84] p-1.5 rounded-sm hover:bg-[#6c5d84]/10 transition-colors inline-flex items-center justify-center">
+                                    <Edit2 className="w-3.5 h-3.5 stroke-[1.5]"/>
+                                  </button>
+                                )}
+                              </td>
+
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                     {processedGuests.length === 0 && (
@@ -1027,6 +1185,97 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* HOUSEHOLD DIRECTORY TAB (View & Edit Households + Assigned Guests) */}
+              {dashboardTab === 'households' && (
+                <div className="flex-1 flex flex-col p-6 md:p-10 overflow-auto space-y-6" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                  <div className="flex justify-between items-center border-b border-[#333036]/15 pb-4">
+                    <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.2em] text-[#6c5d84]">Household Directory</h3>
+                    <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-xs text-[#333036]/70">Total Households: {households.length}</p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {households.map(hh => {
+                      const isEditingHh = editingHouseholdId === hh.id;
+                      const hhGuests = guests.filter(g => g.householdId === hh.householdId);
+
+                      return (
+                        <div key={hh.id} className="bg-[#e6dbcc] p-6 rounded-sm border border-[#6c5d84]/20 shadow-sm space-y-4">
+                          <div className="flex justify-between items-start">
+                            {isEditingHh ? (
+                              <input 
+                                type="text" 
+                                value={tempHouseholdData.name} 
+                                onChange={(e) => setTempHouseholdData({ ...tempHouseholdData, name: e.target.value })}
+                                className="border border-[#6c5d84] bg-[#dccfb9] px-2 py-1 text-sm rounded-sm font-bold w-3/4 outline-none"
+                              />
+                            ) : (
+                              <div>
+                                <h4 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-base text-[#333036]">{hh.name}</h4>
+                                <span className="text-[10px] tracking-wider uppercase text-[#6c5d84] font-bold">Household ID: #{hh.householdId}</span>
+                              </div>
+                            )}
+
+                            {isEditingHh ? (
+                              <button onClick={() => saveHouseholdEdits(hh.id, hh.householdId)} className="bg-[#6c5d84] text-[#e6dbcc] p-1.5 rounded-sm hover:bg-[#524569] transition-colors">
+                                <Check className="w-4 h-4 stroke-[2]"/>
+                              </button>
+                            ) : (
+                              <button onClick={() => startEditingHousehold(hh)} className="border border-[#6c5d84]/40 text-[#6c5d84] p-1.5 rounded-sm hover:bg-[#6c5d84]/10 transition-colors">
+                                <Edit2 className="w-4 h-4 stroke-[1.5]"/>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Editable Contact Fields */}
+                          <div className="space-y-2 text-xs pt-2 border-t border-[#333036]/10">
+                            {isEditingHh ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-16 uppercase text-[10px] font-bold text-[#6c5d84]">Email:</span>
+                                  <input type="text" value={tempHouseholdData.email} onChange={(e) => setTempHouseholdData({ ...tempHouseholdData, email: e.target.value })} className="flex-1 p-1 bg-[#dccfb9] border border-[#6c5d84]/40 rounded-sm outline-none" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-16 uppercase text-[10px] font-bold text-[#6c5d84]">Phone:</span>
+                                  <input type="text" value={tempHouseholdData.phone} onChange={(e) => setTempHouseholdData({ ...tempHouseholdData, phone: e.target.value })} className="flex-1 p-1 bg-[#dccfb9] border border-[#6c5d84]/40 rounded-sm outline-none" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-16 uppercase text-[10px] font-bold text-[#6c5d84]">Address:</span>
+                                  <input type="text" value={tempHouseholdData.address} onChange={(e) => setTempHouseholdData({ ...tempHouseholdData, address: e.target.value })} className="flex-1 p-1 bg-[#dccfb9] border border-[#6c5d84]/40 rounded-sm outline-none" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1 font-light text-[#333036]/90">
+                                <p><strong className="font-bold text-[#6c5d84]">Email:</strong> {hh.email || 'None provided'}</p>
+                                <p><strong className="font-bold text-[#6c5d84]">Phone:</strong> {hh.phone || 'None provided'}</p>
+                                <p><strong className="font-bold text-[#6c5d84]">Address:</strong> {hh.address || 'None provided'}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Assigned Guests List */}
+                          <div className="pt-2 border-t border-[#333036]/10">
+                            <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider text-[#6c5d84] mb-2">Assigned Guests ({hhGuests.length}):</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {hhGuests.length > 0 ? (
+                                hhGuests.map(g => (
+                                  <span key={g.id} className="bg-[#d2c4ae] text-[#333036] px-2.5 py-1 rounded-sm text-xs font-light border border-[#333036]/10">
+                                    {g.name} <span className="text-[10px] opacity-60">({g.ageRange})</span>
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs italic text-[#333036]/50 font-light">No guests currently assigned.</span>
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </div>
