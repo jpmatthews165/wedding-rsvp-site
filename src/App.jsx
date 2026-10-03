@@ -547,24 +547,30 @@ export default function App() {
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
-              <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4a4552]">We invite you to celebrate with us</p>
-              <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#6c5d84] drop-shadow-sm">Josh &<br />Sneha</h1>
+              <RevealOnScroll delay={0}>
+                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4a4552]">We invite you to celebrate with us</p>
+              </RevealOnScroll>
+              <RevealOnScroll delay={150}>
+                <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#6c5d84] drop-shadow-sm">Josh &<br />Sneha</h1>
+              </RevealOnScroll>
             </RevealOnScroll>
 
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
-              <button 
-                onClick={() => scrollToSection('rsvp')} 
-                className="font-subtitle border border-[#6c5d84] bg-[#e6dbcc]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors shadow-sm"
-              >
-                RSVP Now
-              </button>
+              <RevealOnScroll delay={300}>
+                <button 
+                  onClick={() => scrollToSection('rsvp')} 
+                  className="font-subtitle border border-[#6c5d84] bg-[#e6dbcc]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors shadow-sm"
+                >
+                  RSVP Now
+                </button>
+              </RevealOnScroll>
             </div>
           </section>
 
           <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#e6dbcc]">
             <div className="max-w-6xl w-full grid md:grid-cols-2 gap-16 md:gap-24 items-center">
               <div className="space-y-10 text-center md:text-left">
-                <RevealOnScroll>
+                <RevealOnScroll delay={0}>
                   <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">The Wedding</h2>
                   <div className="h-px w-24 bg-[#6c5d84]/40 mx-auto md:mx-0"></div>
                 </RevealOnScroll>
@@ -602,6 +608,7 @@ export default function App() {
                   </div>
                 </RevealOnScroll>
               </div>
+
               <RevealOnScroll delay={200}>
                 <div className="relative h-[80vh] w-full bg-[#d9cca8] overflow-hidden rounded-sm z-10 shadow-lg border border-[#b0c4de]/40">
                   <div className="absolute inset-0 w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('/details.jpg')" }}></div>
@@ -612,10 +619,11 @@ export default function App() {
 
           <section id="travel" className="py-32 px-6 md:px-12 bg-[#e6dbcc] border-t border-[#6c5d84]/15">
             <div className="max-w-5xl mx-auto text-center">
-              <RevealOnScroll>
+              <RevealOnScroll delay={0}>
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Travel & Stay</h2>
                 <div className="h-px w-24 bg-[#6c5d84]/40 mx-auto mb-16"></div>
               </RevealOnScroll>
+              
               <div className="grid md:grid-cols-2 gap-16 text-left">
                 <RevealOnScroll delay={100} className="space-y-8">
                   <h3 className="font-subtitle text-3xl md:text-4xl tracking-normal text-[#6c5d84]">Getting Here</h3>
@@ -631,6 +639,7 @@ export default function App() {
                     </li>
                   </ul>
                 </RevealOnScroll>
+
                 <RevealOnScroll delay={200} className="space-y-8">
                   <h3 className="font-subtitle text-3xl md:text-4xl tracking-normal text-[#6c5d84]">Accommodations</h3>
                   <p className="font-details text-lg text-[#333036] leading-relaxed">We have secured a block of rooms at a special rate for our guests. Please book before April 29th to ensure availability.</p>
@@ -651,7 +660,7 @@ export default function App() {
           {/* COUNTDOWN SECTION - Lilac Majority */}
           <section className="py-24 bg-[#6c5d84] text-[#e6dbcc] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
-              <RevealOnScroll>
+              <RevealOnScroll delay={0}>
                 <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#e6dbcc]">Counting down the days</p>
               </RevealOnScroll>
               
@@ -675,11 +684,12 @@ export default function App() {
 
           <section id="activities" className="py-32 px-6 md:px-12 bg-[#dccfb9]">
             <div className="max-w-5xl mx-auto">
-              <RevealOnScroll className="text-center mb-16">
+              <RevealOnScroll delay={0} className="text-center mb-16">
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Local Favorites</h2>
                 <div className="h-px w-24 bg-[#6c5d84]/40 mx-auto"></div>
                 <p className="mt-8 font-details text-[#333036] text-lg max-w-2xl mx-auto">If you have some extra time during the weekend, here are a few of our favorite spots to eat, drink, and explore.</p>
               </RevealOnScroll>
+              
               <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
                 {[
                   { name: "Reading Terminal Market", desc: "A historic public market in Philly with incredible food stalls. Grab a roast pork sandwich!", delay: 100 },
@@ -699,7 +709,7 @@ export default function App() {
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
             <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
-            <RevealOnScroll className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
+            <RevealOnScroll delay={0} className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
@@ -711,10 +721,11 @@ export default function App() {
 
           <section id="faq" className="py-32 px-6 md:px-12 bg-[#dccfb9]">
             <div className="max-w-3xl mx-auto">
-              <RevealOnScroll className="text-center mb-16">
+              <RevealOnScroll delay={0} className="text-center mb-16">
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">FAQ</h2>
                 <div className="h-px w-24 bg-[#6c5d84]/40 mx-auto"></div>
               </RevealOnScroll>
+              
               <div className="space-y-12">
                 {[
                   { q: "What is the dress code?", a: "We request formal / black-tie optional attire. Please avoid wearing white." },
@@ -739,7 +750,7 @@ export default function App() {
             <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
 
             <div className="max-w-xl w-full text-center relative z-20">
-              <RevealOnScroll className="space-y-4 mb-16">
+              <RevealOnScroll delay={0} className="space-y-4 mb-16">
                 <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm uppercase text-[#333036]">We eagerly await your reply</p>
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84]">RSVP</h2>
               </RevealOnScroll>
@@ -756,7 +767,7 @@ export default function App() {
                 )}
 
                 {searchResults.length > 0 && !searchError && (
-                  <div className="absolute w-full mt-2 bg-[#fbf7ef] border border-[#333036]/20 shadow-2xl max-h-64 overflow-y-auto text-left z-50">
+                  <div className="absolute w-full mt-2 bg-[#e6dbcc] border border-[#333036]/20 shadow-2xl max-h-64 overflow-y-auto text-left z-50">
                     {searchResults.map((guest) => (
                       <button key={guest.id} onClick={() => { setSelectedHousehold({ name: guest.household, members: guests.filter(g => g.householdId === guest.householdId) }); setSearchTerm(''); setSearchResults([]); }} className="w-full text-left px-6 py-5 border-b border-[#333036]/10 last:border-0 hover:bg-[#6c5d84]/5 transition-colors">
                         <p className="font-subtitle text-2xl tracking-normal text-[#6c5d84]">{guest.name}</p>
@@ -771,7 +782,7 @@ export default function App() {
 
           {selectedHousehold && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
-              <div className="bg-[#fbf7ef] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#333036]/10">
+              <div className="bg-[#e6dbcc] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#333036]/10">
                 <button onClick={() => setSelectedHousehold(null)} className="absolute top-8 right-8 text-[#6c5d84] hover:text-[#333036] transition-colors">
                   <X className="w-8 h-8 stroke-[1]" />
                 </button>
@@ -897,7 +908,7 @@ export default function App() {
                     <div className="relative flex-1 max-w-md">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333036]/50 w-4 h-4" />
                       <input type="text" placeholder="Search by Name, Household, or ID..." value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] text-sm text-[#333036] font-sans" />
-                      {dashboardSearch && <button onClick={() => setDashboardSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333036]/50 hover:text-[#333036]"><X className="w-4 h-4" /></button>}
+                      {dashboardSearch && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333036]/50 hover:text-[#333036]"><X className="w-4 h-4" /></button>}
                     </div>
                     <div className="flex gap-4 font-sans font-bold">
                       <button onClick={handleOpenAddForm} className="flex items-center gap-2 bg-[#6c5d84] text-[#e6dbcc] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#524569] transition-colors"><UserPlus className="w-4 h-4" /> Add Household</button>
