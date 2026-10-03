@@ -441,8 +441,11 @@ export default function App() {
       const key = sortConfig.key;
 
       if (key === 'householdId') {
-        aValue = (a.householdId || '').toLowerCase();
-        bValue = (b.householdId || '').toLowerCase();
+        // Parse strictly as integer for numerical sorting (1, 2, 3, 4, 388)
+        aValue = parseInt(a.householdId, 10);
+        bValue = parseInt(b.householdId, 10);
+        if (isNaN(aValue)) aValue = 0;
+        if (isNaN(bValue)) bValue = 0;
       } else if (key === 'name' || key === 'ageRange') {
         aValue = (a[key] || '').toLowerCase();
         bValue = (b[key] || '').toLowerCase();
@@ -459,11 +462,11 @@ export default function App() {
         return sortConfig.direction === 'asc' ? comparison : -comparison;
       }
 
+      // Secondary fallback sort: numerical householdId then guest name
       if (key !== 'householdId') {
-        const hA = (a.householdId || '').toLowerCase();
-        const hB = (b.householdId || '').toLowerCase();
-        if (hA < hB) return -1;
-        if (hA > hB) return 1;
+        const hA = parseInt(a.householdId, 10) || 0;
+        const hB = parseInt(b.householdId, 10) || 0;
+        if (hA !== hB) return hA - hB;
       }
       
       const nA = (a.name || '').toLowerCase();
@@ -485,8 +488,8 @@ export default function App() {
   };
 
   const SortIndicator = ({ columnKey }) => {
-    if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-3 h-3 ml-2 inline text-[#333036] opacity-50" />;
-    return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1 inline text-[#6c5d84]" /> : <ChevronDown className="w-4 h-4 ml-1 inline text-[#6c5d84]" />;
+    if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-3 h-3 ml-2 inline text-[#333036] opacity-40"/>;
+    return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1 inline text-[#6c5d84]"/> : <ChevronDown className="w-4 h-4 ml-1 inline text-[#6c5d84]"/>;
   };
 
   // --------------------------------------------------------
@@ -506,7 +509,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
               <span className="font-title text-3xl tracking-wide text-[#6c5d84]">Josh & Sneha</span>
               <button onClick={() => setIsMenuOpen(true)} className="text-[#6c5d84] hover:text-[#333036] transition-colors">
-                <Menu className="w-8 h-8 stroke-[1.5]" />
+                <Menu className="w-8 h-8 stroke-[1.5]"/>
               </button>
             </div>
           </header>
@@ -517,7 +520,7 @@ export default function App() {
             }`}
           >
             <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 text-[#6c5d84] hover:text-[#333036] transition-colors">
-              <X className="w-10 h-10 stroke-[1]" />
+              <X className="w-10 h-10 stroke-[1]"/>
             </button>
             <nav className="flex flex-col items-center space-y-8 md:space-y-12">
               {[
@@ -603,7 +606,6 @@ export default function App() {
                 </RevealOnScroll>
 
                 <RevealOnScroll delay={400}>
-                  {/* DUOTONE MAP CONTAINER */}
                   <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#e5dccd] z-10 border border-[#6c5d84]/20">
                     <iframe 
                       src="https://maps.google.com/maps?q=Lucien's+Manor,+81+W+White+Horse+Pike,+Berlin,+NJ&t=&z=14&ie=UTF8&iwloc=&output=embed" 
@@ -835,65 +837,73 @@ export default function App() {
 
       {/* =========================================
           ADMIN DASHBOARD UI (Accessed ONLY via /admin)
-          Utilizing Helvetica Neue font suite and palette colors.
+          Chic, minimalist, editorial layout using Helvetica Neue family weights
           ========================================= */}
       {isAdminRoute && (
-        <div className="min-h-screen p-4 flex flex-col items-center bg-[#e6dbcc] text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+        <div className="min-h-screen p-6 md:p-12 flex flex-col items-center bg-[#e6dbcc] text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
           
           {!isAdmin && (
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[200]">
-              <form onSubmit={handleAdminLogin} className="bg-[#dccfb9] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#6c5d84] animate-in zoom-in-95">
-                <Lock className="w-8 h-8 text-[#6c5d84] mb-4" />
-                <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-2xl text-[#333036] mb-8">Admin Access</h3>
-                <input type="password" placeholder="Enter PIN" value={pin} onChange={(e) => setPin(e.target.value)} className="border border-[#333036]/30 bg-[#e6dbcc] px-4 py-3 text-center text-2xl tracking-widest focus:border-[#6c5d84] outline-none mb-8 w-56 text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} autoFocus />
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
+              <form onSubmit={handleAdminLogin} className="bg-[#dccfb9] p-8 md:p-12 rounded-sm shadow-xl flex flex-col items-center border border-[#6c5d84]/25 max-w-md w-full animate-in zoom-in-95">
+                <Lock className="w-6 h-6 text-[#6c5d84] mb-4 stroke-[1.5]"/>
+                <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xl text-[#333036] mb-6 tracking-wide">ADMIN ACCESS</h3>
+                <input 
+                  type="password" 
+                  placeholder="PIN" 
+                  value={pin} 
+                  onChange={(e) => setPin(e.target.value)} 
+                  className="border border-[#333036]/20 bg-[#e6dbcc] px-4 py-3 text-center text-xl tracking-[0.3em] focus:border-[#6c5d84] outline-none mb-8 w-full text-[#333036] rounded-sm font-light" 
+                  style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
+                  autoFocus 
+                />
                 <div className="flex gap-4 w-full">
-                  <button type="button" onClick={() => { window.location.href = '/'; }} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="flex-1 border border-[#333036]/30 text-[#333036] hover:bg-[#333036]/5 py-3 text-xs tracking-widest uppercase transition-colors">Back to Site</button>
-                  <button type="submit" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="flex-1 bg-[#6c5d84] text-[#e6dbcc] py-3 text-xs tracking-widest uppercase hover:bg-[#524569] transition-colors">Login</button>
+                  <button type="button" onClick={() => { window.location.href = '/'; }} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 500 }} className="flex-1 border border-[#333036]/20 text-[#333036] hover:bg-[#333036]/5 py-3 text-[11px] tracking-[0.2em] uppercase transition-colors rounded-sm">Exit</button>
+                  <button type="submit" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="flex-1 bg-[#6c5d84] text-[#e6dbcc] py-3 text-[11px] tracking-[0.2em] uppercase hover:bg-[#524569] transition-colors rounded-sm shadow-sm">Enter</button>
                 </div>
               </form>
             </div>
           )}
 
           {isAdmin && (
-            <div className="w-full max-w-6xl bg-[#dccfb9] rounded-lg shadow-xl overflow-hidden min-h-[80vh] flex flex-col mt-4 border border-[#6c5d84]/20">
+            <div className="w-full max-w-6xl bg-[#dccfb9] rounded-sm shadow-2xl overflow-hidden min-h-[85vh] flex flex-col border border-[#6c5d84]/20">
               
-              <div className="bg-[#6c5d84] text-[#e6dbcc] p-6 flex justify-between items-center">
-                <h2 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-2xl tracking-wide">Guest & RSVP Management</h2>
-                <a href="/" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm tracking-[0.1em] uppercase opacity-90 hover:opacity-100">Exit to Site</a>
+              <div className="bg-[#6c5d84] text-[#e6dbcc] p-6 md:px-10 flex justify-between items-center">
+                <h2 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-lg md:text-xl tracking-[0.15em] uppercase">Guest & RSVP Management</h2>
+                <a href="/" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 500 }} className="text-[11px] tracking-[0.2em] uppercase opacity-80 hover:opacity-100 transition-opacity">Exit to Site</a>
               </div>
 
-              <div className="flex border-b border-[#333036]/15 bg-[#d2c4ae] text-sm tracking-wide text-[#333036] overflow-x-auto" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
-                <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Overview & Stats</button>
-                <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 uppercase whitespace-nowrap ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Guest List Editor</button>
+              <div className="flex border-b border-[#333036]/15 bg-[#d2c4ae] text-xs tracking-[0.15em] uppercase text-[#333036] overflow-x-auto" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
+                <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Overview & Stats</button>
+                <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Guest List Editor</button>
               </div>
 
               {dashboardTab === 'stats' && (
-                <div className="p-8 space-y-8 flex-1" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                <div className="p-6 md:p-10 space-y-8 flex-1" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                   <div className="grid md:grid-cols-2 gap-8">
                     {allUniqueEvents.length === 0 ? (
-                      <div className="col-span-2 text-center py-12 border-2 border-dashed border-[#333036]/20 rounded-lg text-[#333036]/60">No events or guests found in the database.</div>
+                      <div className="col-span-2 text-center py-16 text-[#333036]/50 font-light text-sm tracking-wider">NO EVENTS OR GUESTS FOUND IN THE DATABASE.</div>
                     ) : (
                       allUniqueEvents.map(eventName => {
                         const stats = calcStats(eventName);
                         return (
-                          <div key={eventName} className="bg-[#e6dbcc] p-6 rounded border border-[#6c5d84]/20">
-                            <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xl text-[#6c5d84] mb-6">{eventName}</h3>
+                          <div key={eventName} className="bg-[#e6dbcc] p-6 rounded-sm border border-[#6c5d84]/15 shadow-sm">
+                            <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm uppercase tracking-[0.15em] text-[#6c5d84] mb-6">{eventName}</h3>
                             <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#333036]">{stats.total}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1">Invited</p>
+                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.total}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Invited</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#6c5d84]">{stats.yes}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1">Accepted</p>
+                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#6c5d84]">{stats.yes}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Accepted</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#333036]">{stats.no}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1">Declined</p>
+                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.no}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Declined</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded shadow-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#333036]">{stats.pending}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-widest text-[#6c5d84] mt-1">Pending</p>
+                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.pending}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Pending</p>
                               </div>
                             </div>
                           </div>
@@ -903,62 +913,62 @@ export default function App() {
                   </div>
 
                   <div className="mt-8 pt-8 border-t border-[#333036]/15">
-                    <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xl text-[#333036] mb-4">Bulk Upload Guests</h3>
-                    <label style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="flex items-center gap-2 cursor-pointer bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-6 py-3 rounded-sm hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors w-max">
-                      <Upload className="w-5 h-5" />
-                      <span className="uppercase tracking-wider text-sm">Select CSV File</span>
+                    <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.15em] text-[#333036] mb-4">Bulk Upload Guests</h3>
+                    <label style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="flex items-center gap-2 cursor-pointer bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-6 py-3 rounded-sm hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors w-max text-[11px] tracking-[0.15em] uppercase">
+                      <Upload className="w-4 h-4 stroke-[1.5]"/>
+                      <span>Select CSV File</span>
                       <input type="file" accept=".csv" onChange={processCsvUpload} className="hidden" />
                     </label>
-                    <p className="text-xs text-[#333036]/70 mt-2">Required columns: Name, Household, Events. Optional: Household #, Age Range.</p>
+                    <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-[11px] text-[#333036]/70 mt-2">Required columns: Name, Household, Events. Optional: Household #, Age Range.</p>
                   </div>
                 </div>
               )}
 
               {dashboardTab === 'list' && (
-                <div className="flex-1 flex flex-col max-h-[80vh]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                  <div className="p-4 border-b border-[#333036]/15 flex flex-wrap gap-4 justify-between items-center bg-[#d2c4ae]">
-                    <div className="relative flex-1 max-w-md">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333036]/50 w-4 h-4" />
-                      <input type="text" placeholder="Search by Name, Household, or ID..." value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] text-sm text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
-                      {dashboardSearch && <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333036]/50 hover:text-[#333036]"><X className="w-4 h-4" /></button>}
+                <div className="flex-1 flex flex-col max-h-[75vh]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                  <div className="p-4 md:px-6 border-b border-[#333036]/15 flex flex-wrap gap-4 justify-between items-center bg-[#d2c4ae]">
+                    <div className="relative flex-1 max-w-sm">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333036]/40 w-4 h-4 stroke-[1.5]"/>
+                      <input type="text" placeholder="Search guests..." value={dashboardSearch} onChange={(e) => setDashboardSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs text-[#333036] font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                      {dashboardSearch && <button onClick={() => setDashboardSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333036]/50 hover:text-[#333036]"><X className="w-4 h-4"/></button>}
                     </div>
-                    <div className="flex gap-4" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
-                      <button onClick={handleOpenAddForm} className="flex items-center gap-2 bg-[#6c5d84] text-[#e6dbcc] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#524569] transition-colors"><UserPlus className="w-4 h-4" /> Add Household</button>
-                      <button onClick={exportToCsv} className="flex items-center gap-2 bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-4 py-2 rounded-sm text-sm uppercase tracking-wider hover:bg-[#d2c4ae] transition-colors"><Download className="w-4 h-4" /> Export CSV</button>
+                    <div className="flex gap-3" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
+                      <button onClick={handleOpenAddForm} className="flex items-center gap-1.5 bg-[#6c5d84] text-[#e6dbcc] px-4 py-2 rounded-sm text-[11px] tracking-[0.15em] uppercase hover:bg-[#524569] transition-colors shadow-sm"><UserPlus className="w-3.5 h-3.5 stroke-[1.5]"/> Add Household</button>
+                      <button onClick={exportToCsv} className="flex items-center gap-1.5 bg-[#e6dbcc] border border-[#6c5d84] text-[#6c5d84] px-4 py-2 rounded-sm text-[11px] tracking-[0.15em] uppercase hover:bg-[#d2c4ae] transition-colors"><Download className="w-3.5 h-3.5 stroke-[1.5]"/> Export</button>
                     </div>
                   </div>
 
                   {showAddForm && (
                     <div className="bg-[#d2c4ae] p-6 border-b border-[#333036]/15" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                       <div className="flex justify-between items-start mb-4">
-                        <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-lg text-[#333036]">Add New Guests</h3>
+                        <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.15em] text-[#333036]">Add New Household</h3>
                         <div className="text-right">
-                          <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs text-[#333036]/70 uppercase tracking-widest">Household #</p>
-                          <input type="text" value={newHouseholdId} onChange={(e) => setNewHouseholdId(e.target.value)} className="w-24 text-sm p-1 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84] text-center" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                          <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] text-[#333036]/70 uppercase tracking-widest">Household #</p>
+                          <input type="text" value={newHouseholdId} onChange={(e) => setNewHouseholdId(e.target.value)} className="w-20 text-xs p-1.5 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-center font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
                         </div>
                       </div>
                       <div className="space-y-4">
-                        <input type="text" placeholder="Household Name (e.g. The Doe Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="w-full md:w-1/2 p-2 border border-[#333036]/30 bg-[#e6dbcc] rounded outline-none focus:border-[#6c5d84]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
-                        <div className="flex items-center gap-2 bg-[#e6dbcc] p-3 rounded border border-[#333036]/20 shadow-sm w-full md:w-1/2">
-                          <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase text-[#333036]/70">Create New Event Type:</span>
-                          <input type="text" placeholder="e.g. Sangeet" value={newCustomEvent} onChange={(e) => setNewCustomEvent(e.target.value)} className="flex-1 text-sm p-1 border-b border-[#333036]/30 bg-transparent outline-none focus:border-[#6c5d84]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
-                          <button onClick={handleAddCustomEventToForm} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs bg-[#d2c4ae] px-3 py-1 rounded hover:bg-[#c4b59f] transition-colors">Add</button>
+                        <input type="text" placeholder="Household Name (e.g. The Smith Family)" value={newHouseholdName} onChange={(e) => setNewHouseholdName(e.target.value)} className="w-full md:w-1/2 p-2 border border-[#333036]/20 bg-[#e6dbcc] rounded-sm outline-none focus:border-[#6c5d84] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                        <div className="flex items-center gap-2 bg-[#e6dbcc] p-3 rounded-sm border border-[#333036]/15 w-full md:w-1/2">
+                          <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider text-[#333036]/70">Event:</span>
+                          <input type="text" placeholder="e.g. Sangeet" value={newCustomEvent} onChange={(e) => setNewCustomEvent(e.target.value)} className="flex-1 text-xs p-1 border-b border-[#333036]/20 bg-transparent outline-none focus:border-[#6c5d84] font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                          <button onClick={handleAddCustomEventToForm} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider bg-[#d2c4ae] px-3 py-1 rounded-sm hover:bg-[#c4b59f] transition-colors">Add</button>
                         </div>
 
                         {newMembers.map((member, index) => (
-                          <div key={index} className="flex flex-col gap-4 bg-[#e6dbcc] p-4 rounded border border-[#333036]/20 shadow-sm" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
-                            <div className="flex flex-wrap items-center gap-4">
-                              <input type="text" placeholder="Guest Full Name" value={member.name} onChange={(e) => handleUpdateMember(index, 'name', e.target.value)} className="flex-1 min-w-[200px] p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
-                              <select value={member.ageRange} onChange={(e) => handleUpdateMember(index, 'ageRange', e.target.value)} className="p-2 border border-[#333036]/30 rounded outline-none focus:border-[#6c5d84] bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                          <div key={index} className="flex flex-col gap-3 bg-[#e6dbcc] p-4 rounded-sm border border-[#333036]/15 shadow-sm" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <input type="text" placeholder="Guest Full Name" value={member.name} onChange={(e) => handleUpdateMember(index, 'name', e.target.value)} className="flex-1 min-w-[180px] p-2 border border-[#333036]/20 rounded-sm outline-none focus:border-[#6c5d84] bg-[#e6dbcc] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                              <select value={member.ageRange} onChange={(e) => handleUpdateMember(index, 'ageRange', e.target.value)} className="p-2 border border-[#333036]/20 rounded-sm outline-none focus:border-[#6c5d84] bg-[#e6dbcc] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                                 <option value="Adult">Adult</option><option value="Child">Child</option><option value="Infant">Infant</option>
                               </select>
-                              {newMembers.length > 1 && <button onClick={() => handleRemoveMemberRow(index)} className="text-[#333036]/70 hover:text-[#333036] ml-auto"><Trash2 className="w-5 h-5" /></button>}
+                              {newMembers.length > 1 && <button onClick={() => handleRemoveMemberRow(index)} className="text-[#333036]/60 hover:text-[#333036] ml-auto"><Trash2 className="w-4 h-4"/></button>}
                             </div>
-                            <div className="flex flex-wrap items-center gap-4 border-t border-[#333036]/10 pt-3">
-                              <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase text-[#333036]/60 w-full md:w-auto">Invited To:</span>
-                              {formAvailableEvents.length === 0 && <span className="text-xs text-[#333036]/50 italic">No events defined yet. Add one above.</span>}
+                            <div className="flex flex-wrap items-center gap-3 border-t border-[#333036]/10 pt-2.5">
+                              <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider text-[#333036]/60 w-full md:w-auto">Invited To:</span>
+                              {formAvailableEvents.length === 0 && <span className="text-[11px] text-[#333036]/50 italic font-light">No events defined yet.</span>}
                               {formAvailableEvents.map(evt => (
-                                <label key={evt} className="flex items-center gap-1.5 text-sm text-[#333036] cursor-pointer bg-[#d2c4ae] px-2 py-1 rounded border border-[#333036]/20">
+                                <label key={evt} className="flex items-center gap-1.5 text-xs text-[#333036] cursor-pointer bg-[#d2c4ae] px-2.5 py-1 rounded-sm border border-[#333036]/15 font-light">
                                   <input type="checkbox" checked={member.events.includes(evt)} onChange={() => handleUpdateMember(index, 'events', evt)} className="accent-[#6c5d84]" /> {evt}
                                 </label>
                               ))}
@@ -966,8 +976,8 @@ export default function App() {
                           </div>
                         ))}
                         <div className="flex gap-4 pt-2" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }}>
-                          <button onClick={handleAddMemberRow} className="text-[#6c5d84] text-sm uppercase tracking-wider flex items-center gap-1 hover:text-[#333036]"><Plus className="w-4 h-4" /> Add Person to Household</button>
-                          <button onClick={submitNewHousehold} className="bg-[#6c5d84] text-[#e6dbcc] px-6 py-2 rounded-sm text-sm uppercase tracking-wider ml-auto hover:bg-[#524569]">Save to Guest List</button>
+                          <button onClick={handleAddMemberRow} className="text-[#6c5d84] text-[11px] uppercase tracking-[0.15em] flex items-center gap-1 hover:text-[#333036]"><Plus className="w-3.5 h-3.5"/> Add Person</button>
+                          <button onClick={submitNewHousehold} className="bg-[#6c5d84] text-[#e6dbcc] px-6 py-2 rounded-sm text-[11px] tracking-[0.15em] uppercase ml-auto hover:bg-[#524569] shadow-sm">Save Household</button>
                         </div>
                       </div>
                     </div>
@@ -975,28 +985,28 @@ export default function App() {
 
                   <div className="flex-1 overflow-auto bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     <table className="w-full text-left border-collapse min-w-max">
-                      <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 shadow-sm text-xs uppercase tracking-wider text-[#333036]">
+                      <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 text-[10px] uppercase tracking-[0.2em] text-[#333036]">
                         <tr>
-                          <th onClick={() => handleSort('name')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Guest Name <SortIndicator columnKey="name" /></th>
-                          <th onClick={() => handleSort('householdId')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Household <SortIndicator columnKey="householdId" /></th>
-                          <th onClick={() => handleSort('ageRange')} className="px-6 py-4 cursor-pointer hover:bg-[#c4b59f] transition-colors">Age Range <SortIndicator columnKey="ageRange" /></th>
+                          <th onClick={() => handleSort('name')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Guest Name <SortIndicator columnKey="name"/></th>
+                          <th onClick={() => handleSort('householdId')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Household <SortIndicator columnKey="householdId"/></th>
+                          <th onClick={() => handleSort('ageRange')} className="px-6 py-3.5 cursor-pointer hover:bg-[#c4b59f] transition-colors">Age Range <SortIndicator columnKey="ageRange"/></th>
                           {allUniqueEvents.map(evt => (
-                            <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-4 text-center cursor-pointer hover:bg-[#c4b59f] transition-colors">{evt} <SortIndicator columnKey={evt} /></th>
+                            <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-3.5 text-center cursor-pointer hover:bg-[#c4b59f] transition-colors">{evt} <SortIndicator columnKey={evt}/></th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="text-[#333036]">
+                      <tbody className="text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }}>
                         {processedGuests.map((guest) => (
                           <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#dfd4c3] transition-colors">
                             <td style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="px-6 py-3 text-[#333036]">{guest.name}</td>
-                            <td className="px-6 py-3">{guest.household} <span className="block text-xs text-[#333036]/60 mt-0.5">ID: {guest.householdId}</span></td>
-                            <td className="px-6 py-3 text-sm text-[#333036]/80">{guest.ageRange || 'Adult'}</td>
+                            <td className="px-6 py-3">{guest.household} <span className="block text-[10px] text-[#333036]/60 mt-0.5 font-light">ID: {guest.householdId}</span></td>
+                            <td className="px-6 py-3 text-[#333036]/80">{guest.ageRange || 'Adult'}</td>
                             {allUniqueEvents.map(evt => {
                               const isInvited = guest.events?.includes(evt);
                               const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
                               return (
                                 <td key={evt} className="px-6 py-3 text-center border-l border-[#333036]/10">
-                                  <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className={`text-xs uppercase tracking-wider outline-none cursor-pointer border px-2 py-1 rounded transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/20 text-[#6c5d84] border-[#6c5d84]/50' : status === 'no' ? 'bg-[#d4a5a5]/30 text-[#333036] border-[#d4a5a5]/60' : status === 'not_invited' ? 'bg-[#d2c4ae] text-[#333036]/50 border-transparent hover:border-[#333036]/30' : 'bg-[#b0c4de]/30 text-[#333036] border-[#b0c4de]/60'}`}>
+                                  <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className={`text-[10px] uppercase tracking-wider outline-none cursor-pointer border px-2 py-1 rounded-sm transition-colors ${status === 'yes' ? 'bg-[#6c5d84]/15 text-[#6c5d84] border-[#6c5d84]/40' : status === 'no' ? 'bg-[#d4a5a5]/30 text-[#333036] border-[#d4a5a5]/60' : status === 'not_invited' ? 'bg-[#d2c4ae] text-[#333036]/40 border-transparent hover:border-[#333036]/20' : 'bg-[#b0c4de]/30 text-[#333036] border-[#b0c4de]/60'}`}>
                                     <option value="not_invited">Not Invited</option>
                                     <option value="pending">Pending</option>
                                     <option value="yes">Accepted</option>
@@ -1010,8 +1020,8 @@ export default function App() {
                       </tbody>
                     </table>
                     {processedGuests.length === 0 && (
-                      <div style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-center py-12 text-[#333036]/60 text-lg">
-                        {dashboardSearch ? `No guests found matching "${dashboardSearch}"` : 'No guests added yet. Upload a CSV or add a household manually.'}
+                      <div style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 500 }} className="text-center py-16 text-[#333036]/50 text-xs tracking-wider">
+                        {dashboardSearch ? `NO GUESTS MATCHING "${dashboardSearch.toUpperCase()}"` : 'NO GUESTS FOUND.'}
                       </div>
                     )}
                   </div>
