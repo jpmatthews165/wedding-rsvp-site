@@ -97,7 +97,7 @@ export default function App() {
   const [dashboardTab, setDashboardTab] = useState('stats'); 
   
   const [dashboardSearch, setDashboardSearch] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState({ key: 'householdId', direction: 'asc' });
   
   const [allUniqueEvents, setAllUniqueEvents] = useState([]);
 
@@ -163,8 +163,6 @@ export default function App() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const scrollPos = window.scrollY;
-          
-          // Show header only after scrolling past half of the hero height (~window.innerHeight / 2)
           setShowStickyHeader(scrollPos > window.innerHeight * 0.5);
 
           if (heroBgRef.current) {
@@ -431,21 +429,45 @@ export default function App() {
         g.name?.toLowerCase().includes(term) || g.household?.toLowerCase().includes(term) || g.householdId?.toLowerCase().includes(term)
       );
     }
-    if (sortConfig.key) {
-      filtered.sort((a, b) => {
-        let aValue, bValue;
-        if (['name', 'household', 'ageRange'].includes(sortConfig.key)) {
-          aValue = (a[sortConfig.key] || '').toLowerCase();
-          bValue = (b[sortConfig.key] || '').toLowerCase();
-        } else {
-          aValue = a.events?.includes(sortConfig.key) ? (a.rsvps?.[sortConfig.key] || 'pending') : 'zzz_not_invited';
-          bValue = b.events?.includes(sortConfig.key) ? (b.rsvps?.[sortConfig.key] || 'pending') : 'zzz_not_invited';
-        }
-        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
+    
+    // Sort logic
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+      const key = sortConfig.key;
+
+      if (key === 'householdId') {
+        aValue = (a.householdId || '').toLowerCase();
+        bValue = (b.householdId || '').toLowerCase();
+      } else if (key === 'name' || key === 'ageRange') {
+        aValue = (a[key] || '').toLowerCase();
+        bValue = (b[key] || '').toLowerCase();
+      } else {
+        // Event columns
+        aValue = a.events?.includes(key) ? (a.rsvps?.[key] || 'pending') : 'zzz_not_invited';
+        bValue = b.events?.includes(key) ? (b.rsvps?.[key] || 'pending') : 'zzz_not_invited';
+      }
+
+      let comparison = 0;
+      if (aValue < bValue) comparison = -1;
+      if (aValue > bValue) comparison = 1;
+
+      if (comparison !== 0) {
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      }
+
+      // Secondary fallback sort: always group by householdId then guest name
+      if (key !== 'householdId') {
+        const hA = (a.householdId || '').toLowerCase();
+        const hB = (b.householdId || '').toLowerCase();
+        if (hA < hB) return -1;
+        if (hA > hB) return 1;
+      }
+      
+      const nA = (a.name || '').toLowerCase();
+      const nB = (b.name || '').toLowerCase();
+      return nA < nB ? -1 : nA > nB ? 1 : 0;
+    });
+
     return filtered;
   }, [guests, dashboardSearch, sortConfig]);
 
@@ -475,7 +497,6 @@ export default function App() {
           ========================================= */}
       {!isAdminRoute && (
         <>
-          {/* HEADER BAR - Fades in only after scrolling past half of hero */}
           <header className={`fixed top-0 left-0 w-full z-50 bg-[#fcf9f4]/90 backdrop-blur-md border-b border-[#5d5275]/10 transition-all duration-500 ease-out ${
             showStickyHeader ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}>
@@ -487,7 +508,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* FULL SCREEN MENU OVERLAY */}
           <div 
             className={`fixed inset-0 bg-[#fcf9f4] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
               isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -521,8 +541,6 @@ export default function App() {
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#fcf9f4]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
-            
-            {/* HARSHER, MORE VISIBLE SOFT GRADIENT OVERLAY */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#fcf9f4] via-[#fcf9f4]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
@@ -530,7 +548,6 @@ export default function App() {
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#5d5275] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
 
-            {/* HERO RSVP BUTTON */}
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
               <button 
                 onClick={() => scrollToSection('rsvp')} 
@@ -561,7 +578,6 @@ export default function App() {
                   <p className="font-details text-xl text-[#7a6d96] tracking-wide mt-2">81 W White Horse Pike<br/>Berlin, NJ 08009</p>
                 </RevealOnScroll>
 
-                {/* DETAILS ACTION BUTTONS */}
                 <RevealOnScroll delay={300} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
                   <button 
                     onClick={handleAddToCalendar} 
@@ -629,7 +645,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* COUNTDOWN SECTION */}
           <section className="py-24 bg-[#b5838d]/90 text-[#fcf9f4] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
@@ -932,7 +947,7 @@ export default function App() {
                       <thead className="sticky top-0 bg-gray-100 border-b border-gray-300 z-10 shadow-sm text-xs uppercase tracking-wider text-gray-600">
                         <tr>
                           <th onClick={() => handleSort('name')} className="px-6 py-4 font-medium cursor-pointer hover:bg-gray-200 transition-colors">Guest Name <SortIndicator columnKey="name" /></th>
-                          <th onClick={() => handleSort('household')} className="px-6 py-4 font-medium cursor-pointer hover:bg-gray-200 transition-colors">Household <SortIndicator columnKey="household" /></th>
+                          <th onClick={() => handleSort('householdId')} className="px-6 py-4 font-medium cursor-pointer hover:bg-gray-200 transition-colors">Household <SortIndicator columnKey="householdId" /></th>
                           <th onClick={() => handleSort('ageRange')} className="px-6 py-4 font-medium cursor-pointer hover:bg-gray-200 transition-colors">Age Range <SortIndicator columnKey="ageRange" /></th>
                           {allUniqueEvents.map(evt => (
                             <th key={evt} onClick={() => handleSort(evt)} className="px-6 py-4 font-medium text-center cursor-pointer hover:bg-gray-200 transition-colors">{evt} <SortIndicator columnKey={evt} /></th>
