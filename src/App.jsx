@@ -178,6 +178,37 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
+  // Device-smart Calendar Generator
+  const handleAddToCalendar = () => {
+    // Check if user is on Apple Device
+    const isApple = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
+    
+    const title = "Josh & Sneha Wedding";
+    const location = "Lucien's Manor, 81 W White Horse Pike, Berlin, NJ 08009";
+    
+    // Convert 10:00 AM EDT (GMT-4) to UTC string for cross-compatibility
+    // Start: May 29, 2027 at 14:00:00 UTC (10 AM EDT)
+    // End: May 29, 2027 at 20:00:00 UTC (4 PM EDT)
+    const startTime = "20270529T140000Z";
+    const endTime = "20270529T200000Z";
+
+    if (isApple) {
+      // 1. Generate & download .ics file for Apple Calendar
+      const icsData = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${startTime}\nDTEND:${endTime}\nSUMMARY:${title}\nLOCATION:${location}\nEND:VEVENT\nEND:VCALENDAR`;
+      const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.setAttribute('download', 'Josh_Sneha_Wedding.ics');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // 2. Open Google Calendar link for Android/Windows
+      const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startTime}/${endTime}&location=${encodeURIComponent(location)}`;
+      window.open(googleUrl, '_blank');
+    }
+  };
+
   const handleGuestSearch = (e) => {
     e.preventDefault();
     setSearchError('');
@@ -490,10 +521,21 @@ export default function App() {
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#f1ece0]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#f1ece0] via-[#f1ece0]/40 to-transparent z-10 pointer-events-none"></div>
+            
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
               <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4b483c]">We invite you to celebrate with us</p>
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#723332] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
+
+            {/* HERO RSVP BUTTON */}
+            <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
+              <button 
+                onClick={() => scrollToSection('rsvp')} 
+                className="font-subtitle border border-[#723332] bg-[#f1ece0]/30 backdrop-blur-sm text-[#723332] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#723332] hover:text-[#f1ece0] transition-colors"
+              >
+                RSVP Now
+              </button>
+            </div>
           </section>
 
           <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#f1ece0]">
@@ -503,18 +545,37 @@ export default function App() {
                   <h2 className="font-title text-5xl md:text-7xl text-[#723332] mb-6">The Wedding</h2>
                   <div className="h-px w-24 bg-[#4b483c] mx-auto md:mx-0"></div>
                 </RevealOnScroll>
+                
                 <RevealOnScroll delay={100} className="space-y-2">
                   <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">When</p>
                   <p className="font-title text-4xl md:text-5xl text-[#723332]">Saturday, May 29th</p>
                   <p className="font-details text-xl text-[#4b483c] tracking-wide mt-2">Ten O'Clock in the Morning</p>
                 </RevealOnScroll>
+                
                 <RevealOnScroll delay={200} className="space-y-2">
                   <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">Where</p>
                   <p className="font-title text-4xl md:text-5xl text-[#723332]">Lucien's Manor</p>
                   <p className="font-details text-xl text-[#4b483c] tracking-wide mt-2">81 W White Horse Pike<br/>Berlin, NJ 08009</p>
                 </RevealOnScroll>
-                <RevealOnScroll delay={300}>
-                  <div className="w-full h-64 mt-8 relative overflow-hidden rounded shadow-sm bg-[#e8e2d4] z-10">
+
+                {/* DETAILS ACTION BUTTONS */}
+                <RevealOnScroll delay={300} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
+                  <button 
+                    onClick={handleAddToCalendar} 
+                    className="font-subtitle border border-[#723332] text-[#723332] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#723332] hover:text-[#f1ece0] transition-colors"
+                  >
+                    Add to Calendar
+                  </button>
+                  <button 
+                    onClick={() => scrollToSection('rsvp')} 
+                    className="font-subtitle border border-[#723332] bg-[#723332] text-[#f1ece0] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#4b483c] hover:border-[#4b483c] transition-colors"
+                  >
+                    RSVP
+                  </button>
+                </RevealOnScroll>
+
+                <RevealOnScroll delay={400}>
+                  <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#e8e2d4] z-10">
                     <iframe src="https://maps.google.com/maps?q=Lucien's+Manor,+81+W+White+Horse+Pike,+Berlin,+NJ&t=&z=14&ie=UTF8&iwloc=&output=embed" title="Lucien's Manor Map" className="absolute inset-0 w-full h-full opacity-80 mix-blend-multiply grayscale" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
                   </div>
                 </RevealOnScroll>
@@ -565,7 +626,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* COUNTDOWN SECTION - Inserted After Travel */}
+          {/* COUNTDOWN SECTION */}
           <section className="py-24 bg-[#723332] text-[#f1ece0] relative z-20">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
