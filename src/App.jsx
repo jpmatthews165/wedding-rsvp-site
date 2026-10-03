@@ -91,9 +91,7 @@ export default function App() {
   const [searchError, setSearchError] = useState('');
   const [selectedHousehold, setSelectedHousehold] = useState(null);
   
-  // URL Routing for Admin (checks for /admin path)
   const [isAdminRoute, setIsAdminRoute] = useState(window.location.pathname.includes('/admin'));
-  const [showAdminLogin, setShowAdminLogin] = useState(!window.location.pathname.includes('/admin'));
   const [isAdmin, setIsAdmin] = useState(false);
   const [pin, setPin] = useState('');
   const [dashboardTab, setDashboardTab] = useState('stats'); 
@@ -111,6 +109,7 @@ export default function App() {
   const [newMembers, setNewMembers] = useState([{ name: '', ageRange: 'Adult', events: [] }]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
   
   const heroBgRef = useRef(null);
@@ -120,7 +119,6 @@ export default function App() {
   const weddingDate = new Date('May 29, 2027 10:00:00').getTime();
 
   useEffect(() => {
-    // Listen to browser URL changes for the /admin route
     const handlePopState = () => {
       setIsAdminRoute(window.location.pathname.includes('/admin'));
     };
@@ -159,14 +157,18 @@ export default function App() {
   }, [weddingDate]);
 
   useEffect(() => {
-    if (isAdminRoute) return; // Skip parallax on admin route
+    if (isAdminRoute) return; 
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
+          const scrollPos = window.scrollY;
+          
+          // Show header only after scrolling past half of the hero height (~window.innerHeight / 2)
+          setShowStickyHeader(scrollPos > window.innerHeight * 0.5);
+
           if (heroBgRef.current) {
-            const scrollPosition = window.scrollY;
-            heroBgRef.current.style.transform = `translate3d(0, ${scrollPosition * 0.4}px, 0)`;
+            heroBgRef.current.style.transform = `translate3d(0, ${scrollPos * 0.4}px, 0)`;
           }
           if (registrySectionRef.current && registryBgRef.current) {
             const rect = registrySectionRef.current.getBoundingClientRect();
@@ -190,7 +192,6 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
-  // Device-smart Calendar Generator
   const handleAddToCalendar = () => {
     const isApple = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
     const title = "Josh & Sneha Wedding";
@@ -464,7 +465,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // RENDER UI (WITH PASTEL THEME: Cream, Lilac, Dusty Rose, Baby Blue)
+  // RENDER UI
   // --------------------------------------------------------
   return (
     <div className="bg-[#fcf9f4] text-[#5d5275] font-details selection:bg-[#b5838d] selection:text-[#fcf9f4] overflow-x-hidden">
@@ -474,7 +475,10 @@ export default function App() {
           ========================================= */}
       {!isAdminRoute && (
         <>
-          <header className="fixed top-0 left-0 w-full z-50 bg-[#fcf9f4]/85 backdrop-blur-md border-b border-[#5d5275]/10 transition-all duration-300">
+          {/* HEADER BAR - Fades in only after scrolling past half of hero */}
+          <header className={`fixed top-0 left-0 w-full z-50 bg-[#fcf9f4]/90 backdrop-blur-md border-b border-[#5d5275]/10 transition-all duration-500 ease-out ${
+            showStickyHeader ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-full pointer-events-none'
+          }`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
               <span className="font-title text-3xl tracking-wide text-[#5d5275]">Josh & Sneha</span>
               <button onClick={() => setIsMenuOpen(true)} className="text-[#5d5275]/80 hover:text-[#5d5275] transition-colors">
@@ -517,14 +521,16 @@ export default function App() {
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#fcf9f4]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#fcf9f4]/60 via-[#fcf9f4]/20 to-transparent z-10 pointer-events-none"></div>
+            
+            {/* HARSHER, MORE VISIBLE SOFT GRADIENT OVERLAY */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#fcf9f4] via-[#fcf9f4]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
               <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#7a6d96]">We invite you to celebrate with us</p>
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#5d5275] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
 
-            {/* HERO RSVP BUTTON (Dusty Rose Accent) */}
+            {/* HERO RSVP BUTTON */}
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
               <button 
                 onClick={() => scrollToSection('rsvp')} 
@@ -623,7 +629,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* COUNTDOWN SECTION (Pastel Baby Blue / Dusty Rose Blend) */}
+          {/* COUNTDOWN SECTION */}
           <section className="py-24 bg-[#b5838d]/90 text-[#fcf9f4] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
@@ -788,7 +794,6 @@ export default function App() {
       {isAdminRoute && (
         <div className="min-h-screen p-4 flex flex-col items-center bg-gray-100 font-sans">
           
-          {/* Admin Login Modal (Triggered automatically if not logged in on /admin route) */}
           {!isAdmin && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[200]">
               <form onSubmit={handleAdminLogin} className="bg-[#fcf9f4] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#5d5275] animate-in zoom-in-95">
