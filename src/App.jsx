@@ -8,6 +8,7 @@ import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, delet
 // --------------------------------------------------------
 // 1. FIREBASE CONFIGURATION
 // --------------------------------------------------------
+// test
 const firebaseConfig = {
   apiKey: "AIzaSyCmYELIaWbAQa_a3FwSbGTQ6vwM5yMjAzw",
   authDomain: "wedding-rsvp-a2263.firebaseapp.com",
