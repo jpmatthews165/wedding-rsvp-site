@@ -487,14 +487,14 @@ export default function App() {
   // RENDER UI
   // --------------------------------------------------------
   return (
-    <div className="bg-[#fbf8f2] text-[#222024] font-details selection:bg-[#d4a5a5] selection:text-[#fbf8f2] overflow-x-hidden">
+    <div className="bg-[#fbf7ef] text-[#222024] font-details selection:bg-[#d4a5a5] selection:text-[#fbf7ef] overflow-x-hidden">
       
       {/* =========================================
           WEDDING WEBSITE (GUEST FACING)
           ========================================= */}
       {!isAdminRoute && (
         <>
-          <header className={`fixed top-0 left-0 w-full z-50 bg-[#fbf8f2]/90 backdrop-blur-md border-b border-[#6c5d84]/15 transition-all duration-500 ease-out ${
+          <header className={`fixed top-0 left-0 w-full z-50 bg-[#fbf7ef]/90 backdrop-blur-md border-b border-[#6c5d84]/15 transition-all duration-500 ease-out ${
             showStickyHeader ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -506,7 +506,7 @@ export default function App() {
           </header>
 
           <div 
-            className={`fixed inset-0 bg-[#fbf8f2] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
+            className={`fixed inset-0 bg-[#fbf7ef] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
               isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             }`}
           >
@@ -536,9 +536,9 @@ export default function App() {
             </nav>
           </div>
 
-          <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#fbf8f2]">
+          <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#fbf7ef]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-[#fbf8f2] via-[#fbf8f2]/40 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-[#fbf7ef] via-[#fbf7ef]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
               <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4a4552]">We invite you to celebrate with us</p>
@@ -548,14 +548,14 @@ export default function App() {
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
               <button 
                 onClick={() => scrollToSection('rsvp')} 
-                className="font-subtitle border border-[#6c5d84] bg-[#fbf8f2]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf8f2] transition-colors shadow-sm"
+                className="font-subtitle border border-[#6c5d84] bg-[#fbf7ef]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors shadow-sm"
               >
                 RSVP Now
               </button>
             </div>
           </section>
 
-          <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#fbf8f2]">
+          <section id="details" className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-[#fbf7ef]">
             <div className="max-w-6xl w-full grid md:grid-cols-2 gap-16 md:gap-24 items-center">
               <div className="space-y-10 text-center md:text-left">
                 <RevealOnScroll>
@@ -584,27 +584,27 @@ export default function App() {
                   </button>
                   <button 
                     onClick={() => scrollToSection('rsvp')} 
-                    className="font-subtitle border border-[#6c5d84] bg-[#6c5d84] text-[#fbf8f2] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#524569] hover:border-[#524569] transition-colors shadow-sm"
+                    className="font-subtitle border border-[#6c5d84] bg-[#6c5d84] text-[#fbf7ef] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#524569] hover:border-[#524569] transition-colors shadow-sm"
                   >
                     RSVP
                   </button>
                 </RevealOnScroll>
 
                 <RevealOnScroll delay={400}>
-                  <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#f0eade] z-10 border border-[#b0c4de]/40">
+                  <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-[#f2ecdf] z-10 border border-[#b0c4de]/40">
                     <iframe src="https://maps.google.com/maps?q=Lucien's+Manor,+81+W+White+Horse+Pike,+Berlin,+NJ&t=&z=14&ie=UTF8&iwloc=&output=embed" title="Lucien's Manor Map" className="absolute inset-0 w-full h-full opacity-80 mix-blend-multiply grayscale" style={{ border: 0 }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
                   </div>
                 </RevealOnScroll>
               </div>
               <RevealOnScroll delay={200}>
-                <div className="relative h-[80vh] w-full bg-[#f0eade] overflow-hidden rounded-sm z-10 shadow-lg border border-[#b0c4de]/40">
+                <div className="relative h-[80vh] w-full bg-[#f2ecdf] overflow-hidden rounded-sm z-10 shadow-lg border border-[#b0c4de]/40">
                   <div className="absolute inset-0 w-full h-full bg-cover bg-center" style={{ backgroundImage: "url('/details.jpg')" }}></div>
                 </div>
               </RevealOnScroll>
             </div>
           </section>
 
-          <section id="travel" className="py-32 px-6 md:px-12 bg-[#fbf8f2] border-t border-[#6c5d84]/15">
+          <section id="travel" className="py-32 px-6 md:px-12 bg-[#fbf7ef] border-t border-[#6c5d84]/15">
             <div className="max-w-5xl mx-auto text-center">
               <RevealOnScroll>
                 <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Travel & Stay</h2>
@@ -635,7 +635,7 @@ export default function App() {
                       <p className="font-subtitle text-xs uppercase tracking-[0.15em] text-[#222024]">Discount Code</p>
                       <p className="font-subtitle text-lg tracking-normal text-[#6c5d84]">MATTHEWS27</p>
                     </div>
-                    <button className="mt-4 font-subtitle border border-[#6c5d84] text-[#6c5d84] px-6 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf8f2] transition-colors w-full">Book Room</button>
+                    <button className="mt-4 font-subtitle border border-[#6c5d84] text-[#6c5d84] px-6 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors w-full">Book Room</button>
                   </div>
                 </RevealOnScroll>
               </div>
@@ -643,10 +643,10 @@ export default function App() {
           </section>
 
           {/* COUNTDOWN SECTION - Lilac Majority */}
-          <section className="py-24 bg-[#6c5d84] text-[#fbf8f2] relative z-20 shadow-inner">
+          <section className="py-24 bg-[#6c5d84] text-[#fbf7ef] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
-                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#fbf8f2]">Counting down the days</p>
+                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-[#fbf7ef]">Counting down the days</p>
               </RevealOnScroll>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -658,8 +658,8 @@ export default function App() {
                 ].map((item) => (
                   <RevealOnScroll key={item.label} delay={item.delay}>
                     <div className="space-y-2">
-                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#fbf8f2] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
-                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#fbf8f2]">{item.label}</p>
+                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light text-[#fbf7ef] drop-shadow-sm">{item.value !== undefined ? item.value : '00'}</p>
+                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-90 text-[#fbf7ef]">{item.label}</p>
                     </div>
                   </RevealOnScroll>
                 ))}
@@ -681,7 +681,7 @@ export default function App() {
                   { name: "Philadelphia Historic District", desc: "Take a stroll past the Liberty Bell and Independence Hall just across the bridge.", delay: 300 }
                 ].map((item, i) => (
                   <RevealOnScroll key={i} delay={item.delay}>
-                    <div className="p-8 border border-[#222024]/10 bg-[#fbf8f2]/60 h-full flex flex-col justify-center text-center space-y-4 hover:shadow-md transition-shadow">
+                    <div className="p-8 border border-[#222024]/10 bg-[#fbf7ef]/60 h-full flex flex-col justify-center text-center space-y-4 hover:shadow-md transition-shadow">
                       <h4 className="font-subtitle text-xl md:text-2xl tracking-normal text-[#6c5d84]">{item.name}</h4>
                       <p className="font-details text-[#4a4552] leading-relaxed">{item.desc}</p>
                     </div>
@@ -693,12 +693,12 @@ export default function App() {
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
             <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
-            <RevealOnScroll className="relative z-10 text-center max-w-2xl px-6 bg-[#fbf8f2]/90 backdrop-blur-sm p-16 md:p-24 border border-[#222024]/10 shadow-2xl">
+            <RevealOnScroll className="relative z-10 text-center max-w-2xl px-6 bg-[#fbf7ef]/90 backdrop-blur-sm p-16 md:p-24 border border-[#222024]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#4a4552] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
               <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf8f2] transition-colors text-center">Cash Fund</a>
-                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf8f2] transition-colors text-center">Amazon</a>
+                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors text-center">Cash Fund</a>
+                <a href="#" className="font-subtitle border border-[#6c5d84] text-[#6c5d84] px-8 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#6c5d84] hover:text-[#fbf7ef] transition-colors text-center">Amazon</a>
               </div>
             </RevealOnScroll>
           </section>
@@ -727,7 +727,7 @@ export default function App() {
             </div>
           </section>
 
-          <section id="rsvp" className="min-h-screen flex items-center justify-center py-24 px-6 bg-[#fbf8f2] relative z-20 border-t border-[#6c5d84]/15">
+          <section id="rsvp" className="min-h-screen flex items-center justify-center py-24 px-6 bg-[#fbf7ef] relative z-20 border-t border-[#6c5d84]/15">
             <div className="max-w-xl w-full text-center">
               <RevealOnScroll className="space-y-4 mb-16">
                 <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm uppercase text-[#4a4552]">We eagerly await your reply</p>
@@ -746,7 +746,7 @@ export default function App() {
                 )}
 
                 {searchResults.length > 0 && !searchError && (
-                  <div className="absolute w-full mt-2 bg-[#fbf8f2] border border-[#222024]/20 shadow-2xl max-h-64 overflow-y-auto text-left z-50">
+                  <div className="absolute w-full mt-2 bg-[#fbf7ef] border border-[#222024]/20 shadow-2xl max-h-64 overflow-y-auto text-left z-50">
                     {searchResults.map((guest) => (
                       <button key={guest.id} onClick={() => { setSelectedHousehold({ name: guest.household, members: guests.filter(g => g.householdId === guest.householdId) }); setSearchTerm(''); setSearchResults([]); }} className="w-full text-left px-6 py-5 border-b border-[#222024]/10 last:border-0 hover:bg-[#6c5d84]/5 transition-colors">
                         <p className="font-subtitle text-2xl tracking-normal text-[#222024]">{guest.name}</p>
@@ -761,7 +761,7 @@ export default function App() {
 
           {selectedHousehold && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
-              <div className="bg-[#fbf8f2] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#222024]/10">
+              <div className="bg-[#fbf7ef] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#222024]/10">
                 <button onClick={() => setSelectedHousehold(null)} className="absolute top-8 right-8 text-[#6c5d84] hover:text-[#222024] transition-colors">
                   <X className="w-8 h-8 stroke-[1]" />
                 </button>
@@ -778,7 +778,7 @@ export default function App() {
                           <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <span className="font-subtitle text-[#4a4552] tracking-[0.1em] uppercase text-sm">{event}</span>
                             <div className="flex gap-4">
-                              <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#fbf8f2] border-[#6c5d84]' : 'border-[#222024]/30 text-[#222024] hover:border-[#6c5d84]'}`}>Accept</button>
+                              <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#fbf7ef] border-[#6c5d84]' : 'border-[#222024]/30 text-[#222024] hover:border-[#6c5d84]'}`}>Accept</button>
                               <button onClick={() => handleRsvpChange(member.id, event, 'no')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-[#d4a5a5] text-[#222024] border-[#d4a5a5]' : 'border-[#222024]/30 text-[#222024] hover:border-[#d4a5a5]'}`}>Decline</button>
                             </div>
                           </div>
@@ -789,13 +789,13 @@ export default function App() {
                   ))}
                 </div>
                 <div className="mt-16 text-center">
-                  <button onClick={() => setSelectedHousehold(null)} className="font-subtitle bg-[#6c5d84] text-[#fbf8f2] px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#524569] transition-colors shadow-lg">Complete RSVP</button>
+                  <button onClick={() => setSelectedHousehold(null)} className="font-subtitle bg-[#6c5d84] text-[#fbf7ef] px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#524569] transition-colors shadow-lg">Complete RSVP</button>
                 </div>
               </div>
             </div>
           )}
 
-          <footer className="py-12 bg-[#fbf8f2] border-t border-[#6c5d84]/15 text-center relative z-20">
+          <footer className="py-12 bg-[#fbf7ef] border-t border-[#6c5d84]/15 text-center relative z-20">
             <p className="font-title text-[#6c5d84] text-2xl">J & S</p>
           </footer>
         </>
@@ -809,13 +809,13 @@ export default function App() {
           
           {!isAdmin && (
             <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-[200]">
-              <form onSubmit={handleAdminLogin} className="bg-[#fbf8f2] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#6c5d84] animate-in zoom-in-95">
+              <form onSubmit={handleAdminLogin} className="bg-[#fbf7ef] p-8 md:p-12 rounded shadow-2xl flex flex-col items-center border-t-4 border-[#6c5d84] animate-in zoom-in-95">
                 <Lock className="w-8 h-8 text-[#6c5d84] mb-4" />
                 <h3 className="font-serif text-2xl text-[#222024] mb-8">Admin Access</h3>
                 <input type="password" placeholder="Enter PIN" value={pin} onChange={(e) => setPin(e.target.value)} className="border border-[#222024]/30 bg-white px-4 py-3 text-center text-2xl tracking-widest focus:border-[#6c5d84] outline-none mb-8 w-56 font-serif" autoFocus />
                 <div className="flex gap-4 w-full">
                   <button type="button" onClick={() => { window.location.href = '/'; }} className="flex-1 border border-[#222024]/30 text-[#222024] hover:bg-[#222024]/5 py-3 text-xs tracking-widest uppercase transition-colors">Back to Site</button>
-                  <button type="submit" className="flex-1 bg-[#6c5d84] text-[#fbf8f2] py-3 text-xs tracking-widest uppercase hover:bg-[#524569] transition-colors">Login</button>
+                  <button type="submit" className="flex-1 bg-[#6c5d84] text-[#fbf7ef] py-3 text-xs tracking-widest uppercase hover:bg-[#524569] transition-colors">Login</button>
                 </div>
               </form>
             </div>
@@ -824,7 +824,7 @@ export default function App() {
           {isAdmin && (
             <div className="w-full max-w-6xl bg-white rounded-lg shadow-xl overflow-hidden min-h-[80vh] flex flex-col mt-4">
               
-              <div className="bg-[#6c5d84] text-[#fbf8f2] p-6 flex justify-between items-center">
+              <div className="bg-[#6c5d84] text-[#fbf7ef] p-6 flex justify-between items-center">
                 <h2 className="font-serif text-2xl">Guest & RSVP Management</h2>
                 <a href="/" className="text-sm tracking-[0.1em] uppercase opacity-80 hover:opacity-100">Exit to Site</a>
               </div>
@@ -843,7 +843,7 @@ export default function App() {
                       allUniqueEvents.map(eventName => {
                         const stats = calcStats(eventName);
                         return (
-                          <div key={eventName} className="bg-[#fbf8f2] p-6 rounded border border-[#6c5d84]/15">
+                          <div key={eventName} className="bg-[#fbf7ef] p-6 rounded border border-[#6c5d84]/15">
                             <h3 className="font-serif text-xl text-[#222024] mb-6">{eventName}</h3>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="bg-white p-4 rounded shadow-sm text-center">
