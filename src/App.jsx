@@ -65,14 +65,19 @@ const getEditDistance = (a, b) => {
 };
 
 // --------------------------------------------------------
-// ANIMATION COMPONENT (Set to trigger 10% up from bottom)
+// ANIMATION COMPONENT (Set to trigger 5% up from bottom OR immediately)
 // --------------------------------------------------------
-const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
+const RevealOnScroll = ({ children, delay = 0, className = "", loadImmediately = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    // rootMargin -10% forces the intersection to trigger exactly 10% above the bottom of the viewport
+    if (loadImmediately) {
+      const timer = setTimeout(() => setIsVisible(true), 100);
+      return () => clearTimeout(timer);
+    }
+
+    // rootMargin -5% forces the intersection to trigger exactly 5% above the bottom of the viewport
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -80,11 +85,11 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0, rootMargin: '0px 0px -10% 0px' }
+      { threshold: 0, rootMargin: '0px 0px -5% 0px' }
     );
     if (ref.current) observer.observe(ref.current);
     return () => { if (ref.current) observer.unobserve(ref.target); };
-  }, []);
+  }, [loadImmediately]);
 
   return (
     <div
@@ -735,6 +740,7 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
+            {/* Added GPU properties to strictly prevent browser rendering bugs */}
             <div 
               ref={heroBgRef} 
               className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" 
@@ -747,17 +753,17 @@ export default function App() {
             ></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
-            <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
-              <RevealOnScroll delay={0}>
+            <RevealOnScroll loadImmediately={true} className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
+              <RevealOnScroll loadImmediately={true} delay={0}>
                 <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4a4552]">We invite you to celebrate with us</p>
               </RevealOnScroll>
-              <RevealOnScroll delay={150}>
+              <RevealOnScroll loadImmediately={true} delay={150}>
                 <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#6c5d84] drop-shadow-sm">Josh &<br />Sneha</h1>
               </RevealOnScroll>
             </RevealOnScroll>
 
             <div className="absolute bottom-12 w-full text-center z-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
-              <RevealOnScroll delay={300}>
+              <RevealOnScroll loadImmediately={true} delay={300}>
                 <button 
                   onClick={() => scrollToSection('rsvp')} 
                   className="font-subtitle border border-[#6c5d84] bg-[#e6dbcc]/60 backdrop-blur-sm text-[#6c5d84] px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-[#6c5d84] hover:text-[#e6dbcc] transition-colors shadow-sm"
