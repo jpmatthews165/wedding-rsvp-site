@@ -490,7 +490,7 @@ export default function App() {
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#f1ece0]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#f1ece0] via-[#f1ece0]/40 to-transparent z-10 pointer-events-none"></div>
-            <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 mt-16">
+            <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
               <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4b483c]">We invite you to celebrate with us</p>
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#723332] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
