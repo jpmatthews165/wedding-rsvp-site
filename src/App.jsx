@@ -180,20 +180,13 @@ export default function App() {
 
   // Device-smart Calendar Generator
   const handleAddToCalendar = () => {
-    // Check if user is on Apple Device
     const isApple = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent);
-    
     const title = "Josh & Sneha Wedding";
     const location = "Lucien's Manor, 81 W White Horse Pike, Berlin, NJ 08009";
-    
-    // Convert 10:00 AM EDT (GMT-4) to UTC string for cross-compatibility
-    // Start: May 29, 2027 at 14:00:00 UTC (10 AM EDT)
-    // End: May 29, 2027 at 20:00:00 UTC (4 PM EDT)
     const startTime = "20270529T140000Z";
     const endTime = "20270529T200000Z";
 
     if (isApple) {
-      // 1. Generate & download .ics file for Apple Calendar
       const icsData = `BEGIN:VCALENDAR\nVERSION:2.0\nBEGIN:VEVENT\nDTSTART:${startTime}\nDTEND:${endTime}\nSUMMARY:${title}\nLOCATION:${location}\nEND:VEVENT\nEND:VCALENDAR`;
       const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
       const link = document.createElement('a');
@@ -203,7 +196,6 @@ export default function App() {
       link.click();
       document.body.removeChild(link);
     } else {
-      // 2. Open Google Calendar link for Android/Windows
       const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startTime}/${endTime}&location=${encodeURIComponent(location)}`;
       window.open(googleUrl, '_blank');
     }
@@ -626,11 +618,11 @@ export default function App() {
             </div>
           </section>
 
-          {/* COUNTDOWN SECTION */}
+          {/* COUNTDOWN SECTION - Increased Sizes */}
           <section className="py-24 bg-[#723332] text-[#f1ece0] relative z-20">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll>
-                <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm mb-12 opacity-80">Counting down the days</p>
+                <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-80">Counting down the days</p>
               </RevealOnScroll>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
@@ -642,8 +634,8 @@ export default function App() {
                 ].map((item) => (
                   <RevealOnScroll key={item.label} delay={item.delay}>
                     <div className="space-y-2">
-                      <p className="font-title text-6xl md:text-7xl font-light">{item.value !== undefined ? item.value : '00'}</p>
-                      <p className="font-subtitle tracking-[0.15em] uppercase text-xs opacity-70">{item.label}</p>
+                      <p className="font-title text-7xl md:text-8xl lg:text-9xl font-light">{item.value !== undefined ? item.value : '00'}</p>
+                      <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base opacity-70">{item.label}</p>
                     </div>
                   </RevealOnScroll>
                 ))}
