@@ -64,7 +64,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
       { threshold: 0.15 }
     );
     if (ref.current) observer.observe(ref.current);
-    return () => { if (ref.current) observer.unobserve(ref.current); };
+    return () => { if (ref.current) observer.unobserve(ref.target); };
   }, []);
 
   return (
@@ -102,7 +102,6 @@ export default function App() {
   
   const [allUniqueEvents, setAllUniqueEvents] = useState([]);
 
-  // Safety edit state trackers for admin rows/cards
   const [editingGuestId, setEditingGuestId] = useState(null);
   const [tempGuestData, setTempGuestData] = useState({});
 
@@ -139,7 +138,6 @@ export default function App() {
 
     signInAnonymously(auth).catch(error => console.error("Auth error:", error));
     
-    // Listen to Guests collection
     const unsubGuests = onSnapshot(collection(db, 'guests'), (snapshot) => {
       const guestData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGuests(guestData);
@@ -148,7 +146,6 @@ export default function App() {
       setFormAvailableEvents(prev => Array.from(new Set([...prev, ...uniqueEvents])).sort());
     });
 
-    // Listen to Households collection
     const unsubHouseholds = onSnapshot(collection(db, 'households'), (snapshot) => {
       const hhData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setHouseholds(hhData);
@@ -323,7 +320,6 @@ export default function App() {
     }
   };
 
-  // Safe Single-Item Guest Update
   const startEditingGuest = (guest) => {
     setEditingGuestId(guest.id);
     setTempGuestData({ name: guest.name, householdId: guest.householdId });
@@ -341,7 +337,6 @@ export default function App() {
     setEditingGuestId(null);
   };
 
-  // Safe Single-Item Household Update
   const startEditingHousehold = (hh) => {
     setEditingHouseholdId(hh.id);
     setTempHouseholdData({ name: hh.name, email: hh.email || '', phone: hh.phone || '', address: hh.address || '' });
@@ -358,7 +353,6 @@ export default function App() {
       address: tempHouseholdData.address
     });
 
-    // Cascade name update to all guests linked to this householdId
     const linkedGuests = guests.filter(g => g.householdId === oldHouseholdId);
     linkedGuests.forEach(g => {
       const gRef = doc(db, 'guests', g.id);
@@ -384,7 +378,6 @@ export default function App() {
           const eventsArray = row.Events ? row.Events.split(',').map(e => e.trim()).filter(e => e) : [];
           const rowHouseholdId = row['Household #'] || row.Household;
 
-          // Sync or create household document
           const hhRef = doc(db, 'households', rowHouseholdId);
           batch.set(hhRef, {
             householdId: rowHouseholdId,
@@ -461,7 +454,6 @@ export default function App() {
     }
     const batch = writeBatch(db);
     
-    // Create Household doc
     const hhRef = doc(db, 'households', newHouseholdId);
     batch.set(hhRef, {
       householdId: newHouseholdId,
@@ -471,7 +463,6 @@ export default function App() {
       address: newHouseholdAddress
     });
 
-    // Create Guest docs linked to household
     newMembers.forEach(member => {
       const newRef = doc(collection(db, 'guests'));
       batch.set(newRef, {
@@ -932,7 +923,7 @@ export default function App() {
 
       {/* =========================================
           ADMIN DASHBOARD UI (Accessed ONLY via /admin)
-          Chic, minimalist, editorial layout using Helvetica Neue family weights
+          Chic, minimalist, editorial layout using Helvetica Neue family weights and requested stat colors
           ========================================= */}
       {isAdminRoute && (
         <div className="min-h-screen p-6 md:p-12 flex flex-col items-center bg-[#e6dbcc] text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
@@ -973,6 +964,7 @@ export default function App() {
                 <button onClick={() => setDashboardTab('households')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'households' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Household Directory</button>
               </div>
 
+              {/* OVERVIEW & STATS TAB (Updated with Lilac, Pink, Blue, and Neutral colors) */}
               {dashboardTab === 'stats' && (
                 <div className="p-6 md:p-10 space-y-8 flex-1" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                   <div className="grid md:grid-cols-2 gap-8">
@@ -985,22 +977,31 @@ export default function App() {
                           <div key={eventName} className="bg-[#e6dbcc] p-6 rounded-sm border border-[#6c5d84]/15 shadow-sm">
                             <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm uppercase tracking-[0.15em] text-[#6c5d84] mb-6">{eventName}</h3>
                             <div className="grid grid-cols-2 gap-4">
+                              
+                              {/* Total Invited (Neutral) */}
                               <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.total}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Invited</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#333036]/70 mt-1">Invited</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#6c5d84]">{stats.yes}</p>
+
+                              {/* Accepted (Lilac) */}
+                              <div className="bg-[#6c5d84]/10 p-4 rounded-sm text-center border border-[#6c5d84]/30">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#6c5d84]">{stats.yes}</p>
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Accepted</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.no}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Declined</p>
+
+                              {/* Declined / Rejected (Pink) */}
+                              <div className="bg-[#d4a5a5]/15 p-4 rounded-sm text-center border border-[#d4a5a5]/40">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#524569]">{stats.no}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#d4a5a5] mt-1">Declined</p>
                               </div>
-                              <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.pending}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Pending</p>
+
+                              {/* Pending (Baby Blue) */}
+                              <div className="bg-[#b0c4de]/20 p-4 rounded-sm text-center border border-[#b0c4de]/40">
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#333036]">{stats.pending}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#b0c4de] mt-1">Pending</p>
                               </div>
+
                             </div>
                           </div>
                         );
@@ -1105,7 +1106,6 @@ export default function App() {
                           return (
                             <tr key={guest.id} className="border-b border-[#333036]/10 hover:bg-[#dfd4c3] transition-colors">
                               
-                              {/* Guest Name Column */}
                               <td className="px-6 py-3">
                                 {isEditing ? (
                                   <input 
@@ -1120,7 +1120,6 @@ export default function App() {
                                 )}
                               </td>
 
-                              {/* Household Assignment Column (Relational Dropdown) */}
                               <td className="px-6 py-3">
                                 {isEditing ? (
                                   <select 
@@ -1140,10 +1139,8 @@ export default function App() {
                                 )}
                               </td>
 
-                              {/* Age Range Column */}
                               <td className="px-6 py-3 text-[#333036]/80">{guest.ageRange || 'Adult'}</td>
 
-                              {/* Event Status Dropdowns */}
                               {allUniqueEvents.map(evt => {
                                 const isInvited = guest.events?.includes(evt);
                                 const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
@@ -1159,7 +1156,6 @@ export default function App() {
                                 );
                               })}
 
-                              {/* Safe Edit Action Toggle */}
                               <td className="px-6 py-3 text-center">
                                 {isEditing ? (
                                   <button onClick={() => saveGuestEdits(guest.id)} className="bg-[#6c5d84] text-[#e6dbcc] p-1.5 rounded-sm hover:bg-[#524569] transition-colors inline-flex items-center justify-center">
@@ -1227,7 +1223,6 @@ export default function App() {
                             )}
                           </div>
 
-                          {/* Editable Contact Fields */}
                           <div className="space-y-2 text-xs pt-2 border-t border-[#333036]/10">
                             {isEditingHh ? (
                               <div className="space-y-2">
@@ -1253,7 +1248,6 @@ export default function App() {
                             )}
                           </div>
 
-                          {/* Assigned Guests List */}
                           <div className="pt-2 border-t border-[#333036]/10">
                             <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-wider text-[#6c5d84] mb-2">Assigned Guests ({hhGuests.length}):</p>
                             <div className="flex flex-wrap gap-1.5">
