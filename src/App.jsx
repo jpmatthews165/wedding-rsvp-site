@@ -1322,7 +1322,7 @@ export default function App() {
                                     </select>
                                   </td>
                                 );
-                              });}
+                              })}
 
                               <td className="px-6 py-3 text-center">
                                 {isEditing ? (
