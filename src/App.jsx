@@ -236,46 +236,35 @@ export default function App() {
     return () => clearInterval(timer);
   }, [weddingDate]);
 
-  // HIGH-PERFORMANCE, DIRECT PARALLAX ENGINE (No Lerp Lag, GPU Accelerated)
+  // ORIGINAL STABLE PARALLAX IMPLEMENTATION
   useEffect(() => {
     if (isAdminRoute) return; 
-    let animationFrameId;
-
+    let ticking = false;
     const handleScroll = () => {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollPos = window.scrollY;
+          setShowStickyHeader(scrollPos > window.innerHeight * 0.5);
 
-      animationFrameId = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        
-        // Sticky Header Check
-        setShowStickyHeader(scrollY > window.innerHeight * 0.5);
-
-        // 1. Hero Parallax: Moves down 40% as fast as you scroll down
-        if (heroBgRef.current) {
-          heroBgRef.current.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
-        }
-        
-        // 2. Registry Parallax: Based on distance from viewport top
-        if (registrySectionRef.current && registryBgRef.current) {
-          const rect = registrySectionRef.current.getBoundingClientRect();
-          registryBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.3}px, 0)`;
-        }
-
-        // 3. RSVP Parallax: Based on distance from viewport top
-        if (rsvpSectionRef.current && rsvpBgRef.current) {
-          const rect = rsvpSectionRef.current.getBoundingClientRect();
-          rsvpBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.3}px, 0)`;
-        }
-      });
+          if (heroBgRef.current) {
+            heroBgRef.current.style.transform = `translate3d(0, ${scrollPos * 0.4}px, 0)`;
+          }
+          if (registrySectionRef.current && registryBgRef.current) {
+            const rect = registrySectionRef.current.getBoundingClientRect();
+            registryBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
+          }
+          if (rsvpSectionRef.current && rsvpBgRef.current) {
+            const rect = rsvpSectionRef.current.getBoundingClientRect();
+            rsvpBgRef.current.style.transform = `translate3d(0, ${rect.top * -0.2}px, 0)`;
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Trigger once on mount
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    };
+    handleScroll(); 
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [isAdminRoute]);
 
   const scrollToSection = (id) => {
@@ -714,8 +703,8 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Extended height and negative top to prevent background clipping during translate */}
-            <div ref={heroBgRef} className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
+            {/* ORIGINAL PARALLAX DIVS */}
+            <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
@@ -889,7 +878,8 @@ export default function App() {
           </section>
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
-            <div ref={registryBgRef} className="absolute -top-[50%] left-0 w-full h-[200%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
+            {/* ORIGINAL PARALLAX DIVS */}
+            <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')" }}></div>
             <RevealOnScroll delay={0} className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
@@ -925,8 +915,10 @@ export default function App() {
             </div>
           </section>
 
+          {/* RSVP SECTION WITH FLORAL BACKGROUND AND PARALLAX */}
           <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
-            <div ref={rsvpBgRef} className="absolute -top-[50%] left-0 w-full h-[200%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}></div>
+            {/* ORIGINAL PARALLAX DIVS */}
+            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}></div>
             <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
 
             <div className="max-w-xl w-full text-center relative z-20">
