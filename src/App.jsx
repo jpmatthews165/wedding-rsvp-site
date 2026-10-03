@@ -568,11 +568,21 @@ export default function App() {
 
   const calcStats = (eventName) => {
     const invited = guests.filter(g => g.events?.includes(eventName));
+    const acceptedGuests = invited.filter(g => g.rsvps?.[eventName] === 'yes');
+    
+    // Group accepted by age range
+    const ageBreakdown = acceptedGuests.reduce((acc, g) => {
+      const range = g.ageRange || 'Adult';
+      acc[range] = (acc[range] || 0) + 1;
+      return acc;
+    }, {});
+
     return {
       total: invited.length,
-      yes: invited.filter(g => g.rsvps?.[eventName] === 'yes').length,
+      yes: acceptedGuests.length,
       no: invited.filter(g => g.rsvps?.[eventName] === 'no').length,
-      pending: invited.filter(g => !g.rsvps?.[eventName]).length
+      pending: invited.filter(g => !g.rsvps?.[eventName]).length,
+      ageBreakdown
     };
   };
 
@@ -964,7 +974,7 @@ export default function App() {
                 <button onClick={() => setDashboardTab('households')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'households' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Household Directory</button>
               </div>
 
-              {/* OVERVIEW & STATS TAB (Updated with Lilac, Pink, Blue, and Neutral colors) */}
+              {/* OVERVIEW & STATS TAB */}
               {dashboardTab === 'stats' && (
                 <div className="p-6 md:p-10 space-y-8 flex-1" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                   <div className="grid md:grid-cols-2 gap-8">
@@ -974,8 +984,9 @@ export default function App() {
                       allUniqueEvents.map(eventName => {
                         const stats = calcStats(eventName);
                         return (
-                          <div key={eventName} className="bg-[#e6dbcc] p-6 rounded-sm border border-[#6c5d84]/15 shadow-sm">
-                            <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm uppercase tracking-[0.15em] text-[#6c5d84] mb-6">{eventName}</h3>
+                          <div key={eventName} className="bg-[#e6dbcc] p-6 rounded-sm border border-[#6c5d84]/15 shadow-sm space-y-6">
+                            <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm uppercase tracking-[0.15em] text-[#6c5d84]">{eventName}</h3>
+                            
                             <div className="grid grid-cols-2 gap-4">
                               
                               {/* Total Invited (Neutral) */}
@@ -990,19 +1001,36 @@ export default function App() {
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Accepted</p>
                               </div>
 
-                              {/* Declined / Rejected (Pink) */}
+                              {/* Declined / Rejected (Darker Dusty Pink) */}
                               <div className="bg-[#d4a5a5]/15 p-4 rounded-sm text-center border border-[#d4a5a5]/40">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#524569]">{stats.no}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#d4a5a5] mt-1">Declined</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#7a4d55]">{stats.no}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#7a4d55] mt-1">Declined</p>
                               </div>
 
-                              {/* Pending (Baby Blue) */}
+                              {/* Pending (Darker Baby Blue) */}
                               <div className="bg-[#b0c4de]/20 p-4 rounded-sm text-center border border-[#b0c4de]/40">
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#333036]">{stats.pending}</p>
-                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#b0c4de] mt-1">Pending</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#5c82a6]">{stats.pending}</p>
+                                <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#5c82a6] mt-1">Pending</p>
                               </div>
 
                             </div>
+
+                            {/* Age Range Breakdown for Accepted Guests */}
+                            <div className="pt-4 border-t border-[#333036]/10">
+                              <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.15em] text-[#6c5d84] mb-2">Accepted by Age Range:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.keys(stats.ageBreakdown).length > 0 ? (
+                                  Object.entries(stats.ageBreakdown).map(([range, count]) => (
+                                    <span key={range} className="bg-[#d2c4ae] text-[#333036] px-3 py-1 rounded-sm text-xs border border-[#333036]/10 font-light">
+                                      <strong className="font-bold">{range}s:</strong> {count}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <span className="text-xs italic text-[#333036]/50 font-light">No accepted guests yet.</span>
+                                )}
+                              </div>
+                            </div>
+
                           </div>
                         );
                       })
@@ -1086,7 +1114,6 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* GUEST LIST EDITOR TABLE WITH RELATIONAL REASSIGNMENT & SAFE EDITING */}
                   <div className="flex-1 overflow-auto bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     <table className="w-full text-left border-collapse min-w-max">
                       <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 text-[10px] uppercase tracking-[0.2em] text-[#333036]">
@@ -1182,7 +1209,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* HOUSEHOLD DIRECTORY TAB (View & Edit Households + Assigned Guests) */}
+              {/* HOUSEHOLD DIRECTORY TAB */}
               {dashboardTab === 'households' && (
                 <div className="flex-1 flex flex-col p-6 md:p-10 overflow-auto space-y-6" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                   <div className="flex justify-between items-center border-b border-[#333036]/15 pb-4">
