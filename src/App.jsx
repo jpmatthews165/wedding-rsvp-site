@@ -65,7 +65,7 @@ const getEditDistance = (a, b) => {
 };
 
 // --------------------------------------------------------
-// ANIMATION COMPONENT (Set to trigger 5% up from bottom OR immediately)
+// ANIMATION COMPONENT (Set to trigger 10% up from bottom)
 // --------------------------------------------------------
 const RevealOnScroll = ({ children, delay = 0, className = "", loadImmediately = false }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -77,7 +77,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "", loadImmediately =
       return () => clearTimeout(timer);
     }
 
-    // rootMargin -5% forces the intersection to trigger exactly 5% above the bottom of the viewport
+    // rootMargin -10% forces the intersection to trigger exactly 10% above the bottom of the viewport
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -85,7 +85,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "", loadImmediately =
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0, rootMargin: '0px 0px -5% 0px' }
+      { threshold: 0, rootMargin: '0px 0px -10% 0px' }
     );
     if (ref.current) observer.observe(ref.current);
     return () => { if (ref.current) observer.unobserve(ref.target); };
@@ -267,7 +267,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // ULTIMATE 60FPS PARALLAX ENGINE
+  // RESPONSIVE PARALLAX ENGINE (Fixed on Desktop, Slow on Mobile)
   // --------------------------------------------------------
   useEffect(() => {
     if (isAdminRoute) return; 
@@ -276,23 +276,44 @@ export default function App() {
 
     const parallaxLoop = () => {
       const scrollY = window.scrollY;
+      const isDesktop = window.innerWidth >= 1024; // Tailwind's 'lg' breakpoint
       
+      // Update UI only if scrolling occurred
       if (scrollY !== lastScrollY) {
         lastScrollY = scrollY;
-        
         setShowStickyHeader(scrollY > window.innerHeight * 0.5);
 
-        const registryRect = registrySectionRef.current?.getBoundingClientRect();
-        const rsvpRect = rsvpSectionRef.current?.getBoundingClientRect();
+        if (isDesktop) {
+          // DESKTOP: Strip JS Transforms (relies purely on CSS lg:bg-fixed)
+          if (heroBgRef.current) {
+            heroBgRef.current.style.transform = 'none';
+            heroBgRef.current.style.willChange = 'auto';
+          }
+          if (registryBgRef.current) {
+            registryBgRef.current.style.transform = 'none';
+            registryBgRef.current.style.willChange = 'auto';
+          }
+          if (rsvpBgRef.current) {
+            rsvpBgRef.current.style.transform = 'none';
+            rsvpBgRef.current.style.willChange = 'auto';
+          }
+        } else {
+          // MOBILE: Apply Slow JS Parallax (avoids iOS Safari bg-fixed bugs)
+          const registryRect = registrySectionRef.current?.getBoundingClientRect();
+          const rsvpRect = rsvpSectionRef.current?.getBoundingClientRect();
 
-        if (heroBgRef.current) {
-          heroBgRef.current.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
-        }
-        if (registryBgRef.current && registryRect) {
-          registryBgRef.current.style.transform = `translate3d(0, ${registryRect.top * -0.25}px, 0)`;
-        }
-        if (rsvpBgRef.current && rsvpRect) {
-          rsvpBgRef.current.style.transform = `translate3d(0, ${rsvpRect.top * -0.25}px, 0)`;
+          if (heroBgRef.current) {
+            heroBgRef.current.style.willChange = 'transform';
+            heroBgRef.current.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
+          }
+          if (registryBgRef.current && registryRect) {
+            registryBgRef.current.style.willChange = 'transform';
+            registryBgRef.current.style.transform = `translate3d(0, ${registryRect.top * -0.25}px, 0)`;
+          }
+          if (rsvpBgRef.current && rsvpRect) {
+            rsvpBgRef.current.style.willChange = 'transform';
+            rsvpBgRef.current.style.transform = `translate3d(0, ${rsvpRect.top * -0.25}px, 0)`;
+          }
         }
       }
       
@@ -740,13 +761,12 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Added GPU properties to strictly prevent browser rendering bugs */}
+            {/* Added lg:h-full lg:top-0 lg:bg-fixed to switch to pure CSS fixed background on desktop */}
             <div 
               ref={heroBgRef} 
-              className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" 
+              className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0 lg:top-0 lg:h-full lg:bg-fixed" 
               style={{ 
                 backgroundImage: "url('/hero.jpg')",
-                willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden'
               }}
@@ -911,12 +931,12 @@ export default function App() {
           </section>
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
+            {/* Added lg:h-full lg:top-0 lg:bg-fixed to switch to pure CSS fixed background on desktop */}
             <div 
               ref={registryBgRef} 
-              className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" 
+              className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 lg:top-0 lg:h-full lg:bg-fixed" 
               style={{ 
                 backgroundImage: "url('/registry.jpg')",
-                willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden'
               }}
@@ -957,12 +977,12 @@ export default function App() {
           </section>
 
           <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
+            {/* Added lg:h-full lg:top-0 lg:bg-fixed to switch to pure CSS fixed background on desktop */}
             <div 
               ref={rsvpBgRef} 
-              className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" 
+              className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 lg:top-0 lg:h-full lg:bg-fixed" 
               style={{ 
                 backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
-                willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden'
               }}
@@ -1235,9 +1255,12 @@ export default function App() {
                           <div key={index} className="flex flex-col gap-3 bg-[#e6dbcc] p-4 rounded-sm border border-[#333036]/15 shadow-sm" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                             <div className="flex flex-wrap items-center gap-3">
                               <input type="text" placeholder="Guest Full Name" value={member.name} onChange={(e) => handleUpdateMember(index, 'name', e.target.value)} className="flex-1 min-w-[180px] p-2 border border-[#333036]/20 rounded-sm outline-none focus:border-[#6c5d84] bg-[#e6dbcc] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }} />
+                              
+                              {/* FIXED: Removed the / at the end of this select tag */}
                               <select value={member.ageRange} onChange={(e) => handleUpdateMember(index, 'ageRange', e.target.value)} className="p-2 border border-[#333036]/20 rounded-sm outline-none focus:border-[#6c5d84] bg-[#e6dbcc] text-xs font-light" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                                 <option value="Adult">Adult</option><option value="Child">Child</option><option value="Infant">Infant</option>
                               </select>
+                              
                               {newMembers.length > 1 && <button onClick={() => handleRemoveMemberRow(index)} className="text-[#333036]/60 hover:text-[#333036] ml-auto"><Trash2 className="w-4 h-4"/></button>}
                             </div>
                             <div className="flex flex-wrap items-center gap-3 border-t border-[#333036]/10 pt-2.5">
