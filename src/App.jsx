@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, X, Lock, Upload, Download, CheckCircle2, XCircle, Circle, Plus, Trash2, UserPlus, ArrowUpDown, ChevronUp, ChevronDown, Menu, Edit2, Check, Users, Home } from 'lucide-react';
+import { Search, X, Lock, Upload, Download, CheckCircle2, XCircle, Circle, Plus, Trash2, UserPlus, ArrowUpDown, ChevronUp, ChevronDown, Menu, Edit2, Check, Users, Home, ArrowUp, ArrowDown } from 'lucide-react';
 import Papa from 'papaparse';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, deleteField, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, deleteField, setDoc, getDoc } from 'firebase/firestore';
 
 // --------------------------------------------------------
 // 1. FIREBASE CONFIGURATION
@@ -86,6 +86,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
 export default function App() {
   const [guests, setGuests] = useState([]);
   const [households, setHouseholds] = useState([]);
+  const [customEventOrder, setCustomEventOrder] = useState([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -138,25 +139,70 @@ export default function App() {
 
     signInAnonymously(auth).catch(error => console.error("Auth error:", error));
     
+    // Listen to Guests
     const unsubGuests = onSnapshot(collection(db, 'guests'), (snapshot) => {
       const guestData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGuests(guestData);
-      const uniqueEvents = Array.from(new Set(guestData.flatMap(g => g.events || []))).sort();
-      setAllUniqueEvents(uniqueEvents);
-      setFormAvailableEvents(prev => Array.from(new Set([...prev, ...uniqueEvents])).sort());
+      
+      const rawEvents = Array.from(new Set(guestData.flatMap(g => g.events || [])));
+      
+      // Merge with database-configured event order
+      const orderedEvents = sortEventsByConfig(rawEvents, customEventOrder);
+      setAllUniqueEvents(orderedEvents);
+      setFormAvailableEvents(prev => sortEventsByConfig(Array.from(new Set([...prev, ...orderedEvents])), customEventOrder));
     });
 
+    // Listen to Households
     const unsubHouseholds = onSnapshot(collection(db, 'households'), (snapshot) => {
       const hhData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setHouseholds(hhData);
     });
 
+    // Listen to Settings (Event Order)
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'events'), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().order) {
+        setCustomEventOrder(docSnap.data().order);
+      }
+    });
+
     return () => {
       unsubGuests();
       unsubHouseholds();
+      unsubSettings();
       window.removeEventListener('popstate', handlePopState);
     };
-  }, []);
+  }, [customEventOrder]);
+
+  // Helper to sort events based on DB settings
+  const sortEventsByConfig = (eventsArray, orderConfig) => {
+    return [...eventsArray].sort((a, b) => {
+      const indexA = orderConfig.indexOf(a);
+      const indexB = orderConfig.indexOf(b);
+
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  };
+
+  const handleSaveEventOrder = async (newOrder) => {
+    setCustomEventOrder(newOrder);
+    await setDoc(doc(db, 'settings', 'events'), { order: newOrder }, { merge: true });
+    alert('Event order updated successfully!');
+  };
+
+  const moveEvent = (index, direction) => {
+    const newOrder = [...allUniqueEvents];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return;
+    
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[targetIndex];
+    newOrder[targetIndex] = temp;
+
+    handleSaveEventOrder(newOrder);
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -286,7 +332,8 @@ export default function App() {
 
   const handleAddCustomEventToForm = () => {
     if (newCustomEvent.trim() && !formAvailableEvents.includes(newCustomEvent.trim())) {
-      setFormAvailableEvents([...formAvailableEvents, newCustomEvent.trim()]);
+      const updated = sortEventsByConfig([...formAvailableEvents, newCustomEvent.trim()], customEventOrder);
+      setFormAvailableEvents(updated);
       setNewCustomEvent('');
     }
   };
@@ -570,7 +617,6 @@ export default function App() {
     const invited = guests.filter(g => g.events?.includes(eventName));
     const acceptedGuests = invited.filter(g => g.rsvps?.[eventName] === 'yes');
     
-    // Group accepted by age range
     const ageBreakdown = acceptedGuests.reduce((acc, g) => {
       const range = g.ageRange || 'Adult';
       acc[range] = (acc[range] || 0) + 1;
@@ -889,6 +935,7 @@ export default function App() {
             </div>
           </section>
 
+          {/* GUEST FACING RSVP MODAL (Events Dynamically Sorted by DB Configuration) */}
           {selectedHousehold && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
               <div className="bg-[#e6dbcc] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#333036]/10">
@@ -900,23 +947,26 @@ export default function App() {
                   <div className="h-px w-16 bg-[#6c5d84]/40 mx-auto mt-6"></div>
                 </div>
                 <div className="space-y-12">
-                  {selectedHousehold.members.map((member) => (
-                    <div key={member.id} className="border-b border-[#333036]/10 pb-8 last:border-0 last:pb-0">
-                      <h3 className="font-subtitle text-2xl tracking-normal text-[#6c5d84] mb-8">{member.name}</h3>
-                      <div className="space-y-6 md:pl-4">
-                        {member.events?.map(event => (
-                          <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <span className="font-subtitle text-[#333036] tracking-[0.1em] uppercase text-sm">{event}</span>
-                            <div className="flex gap-4">
-                              <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#e6dbcc] border-[#6c5d84]' : 'border-[#333036]/30 text-[#333036] hover:border-[#6c5d84]'}`}>Accept</button>
-                              <button onClick={() => handleRsvpChange(member.id, event, 'no')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-[#d4a5a5] text-[#333036] border-[#d4a5a5]' : 'border-[#333036]/30 text-[#333036] hover:border-[#d4a5a5]'}`}>Decline</button>
+                  {selectedHousehold.members.map((member) => {
+                    const sortedMemberEvents = sortEventsByConfig(member.events || [], customEventOrder);
+                    return (
+                      <div key={member.id} className="border-b border-[#333036]/10 pb-8 last:border-0 last:pb-0">
+                        <h3 className="font-subtitle text-2xl tracking-normal text-[#6c5d84] mb-8">{member.name}</h3>
+                        <div className="space-y-6 md:pl-4">
+                          {sortedMemberEvents.map(event => (
+                            <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <span className="font-subtitle text-[#333036] tracking-[0.1em] uppercase text-sm">{event}</span>
+                              <div className="flex gap-4">
+                                <button onClick={() => handleRsvpChange(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-[#6c5d84] text-[#e6dbcc] border-[#6c5d84]' : 'border-[#333036]/30 text-[#333036] hover:border-[#6c5d84]'}`}>Accept</button>
+                                <button onClick={() => handleRsvpChange(member.id, event, 'no')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-[#d4a5a5] text-[#333036] border-[#d4a5a5]' : 'border-[#333036]/30 text-[#333036] hover:border-[#d4a5a5]'}`}>Decline</button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                        {(!member.events || member.events.length === 0) && <p className="font-details text-lg text-[#333036]/60 italic">No events assigned.</p>}
+                          ))}
+                          {(!member.events || member.events.length === 0) && <p className="font-details text-lg text-[#333036]/60 italic">No events assigned.</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="mt-16 text-center">
                   <button onClick={() => setSelectedHousehold(null)} className="font-subtitle bg-[#6c5d84] text-[#e6dbcc] px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-[#524569] transition-colors shadow-lg">Complete RSVP</button>
@@ -933,7 +983,6 @@ export default function App() {
 
       {/* =========================================
           ADMIN DASHBOARD UI (Accessed ONLY via /admin)
-          Chic, minimalist, editorial layout using Helvetica Neue family weights and requested stat colors
           ========================================= */}
       {isAdminRoute && (
         <div className="min-h-screen p-6 md:p-12 flex flex-col items-center bg-[#e6dbcc] text-[#333036]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
@@ -972,6 +1021,7 @@ export default function App() {
                 <button onClick={() => setDashboardTab('stats')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'stats' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Overview & Stats</button>
                 <button onClick={() => setDashboardTab('list')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'list' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Guest List Editor</button>
                 <button onClick={() => setDashboardTab('households')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'households' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Household Directory</button>
+                <button onClick={() => setDashboardTab('events')} className={`px-8 py-4 whitespace-nowrap transition-colors ${dashboardTab === 'events' ? 'text-[#6c5d84] border-b-2 border-[#6c5d84] bg-[#e6dbcc]' : 'hover:bg-[#d9cca8]'}`}>Event Order</button>
               </div>
 
               {/* OVERVIEW & STATS TAB */}
@@ -988,34 +1038,27 @@ export default function App() {
                             <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-sm uppercase tracking-[0.15em] text-[#6c5d84]">{eventName}</h3>
                             
                             <div className="grid grid-cols-2 gap-4">
-                              
-                              {/* Total Invited (Neutral) */}
                               <div className="bg-[#dccfb9] p-4 rounded-sm text-center border border-[#333036]/10">
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-3xl text-[#333036]">{stats.total}</p>
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#333036]/70 mt-1">Invited</p>
                               </div>
 
-                              {/* Accepted (Lilac) */}
                               <div className="bg-[#6c5d84]/10 p-4 rounded-sm text-center border border-[#6c5d84]/30">
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#6c5d84]">{stats.yes}</p>
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#6c5d84] mt-1">Accepted</p>
                               </div>
 
-                              {/* Declined / Rejected (Darker Dusty Pink) */}
                               <div className="bg-[#d4a5a5]/15 p-4 rounded-sm text-center border border-[#d4a5a5]/40">
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#7a4d55]">{stats.no}</p>
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#7a4d55] mt-1">Declined</p>
                               </div>
 
-                              {/* Pending (Darker Baby Blue) */}
                               <div className="bg-[#b0c4de]/20 p-4 rounded-sm text-center border border-[#b0c4de]/40">
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-3xl text-[#5c82a6]">{stats.pending}</p>
                                 <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.2em] text-[#5c82a6] mt-1">Pending</p>
                               </div>
-
                             </div>
 
-                            {/* Age Range Breakdown for Accepted Guests */}
                             <div className="pt-4 border-t border-[#333036]/10">
                               <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-[10px] uppercase tracking-[0.15em] text-[#6c5d84] mb-2">Accepted by Age Range:</p>
                               <div className="flex flex-wrap gap-2">
@@ -1045,6 +1088,43 @@ export default function App() {
                       <input type="file" accept=".csv" onChange={processCsvUpload} className="hidden" />
                     </label>
                     <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-[11px] text-[#333036]/70 mt-2">Required columns: Name, Household, Events. Optional: Household #, Age Range, Email, Phone, Address.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* EVENT ORDER CONFIGURATION TAB */}
+              {dashboardTab === 'events' && (
+                <div className="p-6 md:p-10 space-y-6 flex-1" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
+                  <div className="border-b border-[#333036]/15 pb-4">
+                    <h3 style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs uppercase tracking-[0.2em] text-[#6c5d84]">Configure Event Display Order</h3>
+                    <p style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 300 }} className="text-xs text-[#333036]/70 mt-1">Use the arrows to reorder how events appear across the public site and admin views.</p>
+                  </div>
+
+                  <div className="max-w-md space-y-3">
+                    {allUniqueEvents.map((event, index) => (
+                      <div key={event} className="bg-[#e6dbcc] p-4 rounded-sm border border-[#6c5d84]/20 flex items-center justify-between shadow-sm">
+                        <span style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="text-xs tracking-wider uppercase text-[#333036]">{event}</span>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => moveEvent(index, 'up')} 
+                            disabled={index === 0}
+                            className="p-1.5 border border-[#6c5d84]/30 rounded-sm text-[#6c5d84] hover:bg-[#6c5d84]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <ArrowUp className="w-4 h-4 stroke-[1.5]"/>
+                          </button>
+                          <button 
+                            onClick={() => moveEvent(index, 'down')} 
+                            disabled={index === allUniqueEvents.length - 1}
+                            className="p-1.5 border border-[#6c5d84]/30 rounded-sm text-[#6c5d84] hover:bg-[#6c5d84]/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <ArrowDown className="w-4 h-4 stroke-[1.5]"/>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {allUniqueEvents.length === 0 && (
+                      <p className="text-xs italic text-[#333036]/50">No events found in the database yet.</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -1114,6 +1194,7 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* GUEST LIST EDITOR TABLE (Events Sorted by DB Config) */}
                   <div className="flex-1 overflow-auto bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     <table className="w-full text-left border-collapse min-w-max">
                       <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 text-[10px] uppercase tracking-[0.2em] text-[#333036]">
