@@ -141,12 +141,6 @@ export default function App() {
   const [showStickyHeader, setShowStickyHeader] = useState(false);
   const [timeLeft, setTimeLeft] = useState({});
   
-  const heroBgRef = useRef(null);
-  const registrySectionRef = useRef(null);
-  const registryBgRef = useRef(null);
-  const rsvpSectionRef = useRef(null);
-  const rsvpBgRef = useRef(null);
-
   const weddingDate = new Date('May 29, 2027 10:00:00').getTime();
 
   useEffect(() => {
@@ -157,6 +151,7 @@ export default function App() {
 
     signInAnonymously(auth).catch(error => console.error("Auth error:", error));
     
+    // Listen to Guests
     const unsubGuests = onSnapshot(collection(db, 'guests'), (snapshot) => {
       const guestData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGuests(guestData);
@@ -167,11 +162,13 @@ export default function App() {
       setFormAvailableEvents(prev => sortEventsByConfig(Array.from(new Set([...prev, ...orderedEvents])), customEventOrder));
     });
 
+    // Listen to Households
     const unsubHouseholds = onSnapshot(collection(db, 'households'), (snapshot) => {
       const hhData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setHouseholds(hhData);
     });
 
+    // Listen to Settings (Event Order)
     const unsubSettings = onSnapshot(doc(db, 'settings', 'events'), (docSnap) => {
       if (docSnap.exists() && docSnap.data().order) {
         setCustomEventOrder(docSnap.data().order);
@@ -233,46 +230,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, [weddingDate]);
 
-  // BUTTERY SMOOTH LERP PARALLAX ENGINE
+  // OPTIMIZED, LIGHTWEIGHT SCROLL LISTENER (Only for Sticky Header)
   useEffect(() => {
     if (isAdminRoute) return; 
-    
-    let targetScrollY = window.scrollY;
-    let currentScrollY = window.scrollY;
-    let reqId;
-
-    const onScroll = () => {
-      targetScrollY = window.scrollY;
-      setShowStickyHeader(targetScrollY > window.innerHeight * 0.5);
+    const handleScroll = () => {
+      setShowStickyHeader(window.scrollY > window.innerHeight * 0.5);
     };
-
-    const smoothParallaxLoop = () => {
-      // Interpolate current scroll towards target scroll (10% ease per frame)
-      currentScrollY += (targetScrollY - currentScrollY) * 0.1;
-
-      // Apply transforms with GPU acceleration (translate3d)
-      if (heroBgRef.current) {
-        heroBgRef.current.style.transform = `translate3d(0, ${currentScrollY * 0.3}px, 0)`;
-      }
-      if (registrySectionRef.current && registryBgRef.current) {
-        const offset = currentScrollY - registrySectionRef.current.offsetTop;
-        registryBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
-      }
-      if (rsvpSectionRef.current && rsvpBgRef.current) {
-        const offset = currentScrollY - rsvpSectionRef.current.offsetTop;
-        rsvpBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
-      }
-
-      reqId = requestAnimationFrame(smoothParallaxLoop);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    smoothParallaxLoop(); 
-
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(reqId);
-    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); 
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [isAdminRoute]);
 
   const scrollToSection = (id) => {
@@ -710,9 +676,8 @@ export default function App() {
             </nav>
           </div>
 
-          <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Added willChange transform for hardware acceleration to ensure jitter-free lerping */}
-            <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" style={{ backgroundImage: "url('/hero.jpg')", willChange: 'transform' }}></div>
+          {/* PURE CSS FIXED BACKGROUND PARALLAX */}
+          <section id="home" className="relative h-screen flex items-center justify-center bg-[#e6dbcc] bg-fixed bg-cover bg-center z-0" style={{ backgroundImage: "url('/hero.jpg')" }}>
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
@@ -836,6 +801,7 @@ export default function App() {
             </div>
           </section>
 
+          {/* COUNTDOWN SECTION - Lilac Majority */}
           <section className="py-24 bg-[#6c5d84] text-[#e6dbcc] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll delay={0}>
@@ -885,8 +851,8 @@ export default function App() {
             </div>
           </section>
 
-          <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
-            <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')", willChange: 'transform' }}></div>
+          {/* PURE CSS FIXED BACKGROUND PARALLAX */}
+          <section id="registry" className="relative py-40 flex items-center justify-center overflow-hidden bg-fixed bg-cover bg-center" style={{ backgroundImage: "url('/registry.jpg')" }}>
             <RevealOnScroll delay={0} className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
@@ -922,8 +888,8 @@ export default function App() {
             </div>
           </section>
 
-          <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
-            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')", willChange: 'transform' }}></div>
+          {/* PURE CSS FIXED BACKGROUND PARALLAX */}
+          <section id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15 bg-fixed bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}>
             <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
 
             <div className="max-w-xl w-full text-center relative z-20">
