@@ -8,7 +8,6 @@ import { getFirestore, collection, onSnapshot, doc, writeBatch, updateDoc, delet
 // --------------------------------------------------------
 // 1. FIREBASE CONFIGURATION
 // --------------------------------------------------------
-// test
 const firebaseConfig = {
   apiKey: "AIzaSyCmYELIaWbAQa_a3FwSbGTQ6vwM5yMjAzw",
   authDomain: "wedding-rsvp-a2263.firebaseapp.com",
@@ -246,14 +245,12 @@ export default function App() {
     const guestRef = doc(db, 'guests', guest.id);
     
     if (newStatus === 'not_invited') {
-      // Remove event from user's event list and wipe the RSVP data
       const updatedEvents = (guest.events || []).filter(e => e !== eventName);
       await updateDoc(guestRef, {
         events: updatedEvents,
         [`rsvps.${eventName}`]: deleteField()
       });
     } else {
-      // Add event to user's event list (if not present) and set RSVP status
       const updatedEvents = [...new Set([...(guest.events || []), eventName])];
       await updateDoc(guestRef, {
         events: updatedEvents,
@@ -426,6 +423,13 @@ export default function App() {
     };
   };
 
+  const StatusIcon = ({ isInvited, status }) => {
+    if (!isInvited) return <span className="text-[#a2ae99] text-sm">-</span>;
+    if (status === 'yes') return <CheckCircle2 className="w-5 h-5 text-green-700 mx-auto" />;
+    if (status === 'no') return <XCircle className="w-5 h-5 text-red-700 mx-auto" />;
+    return <Circle className="w-5 h-5 text-gray-300 mx-auto" />;
+  };
+
   const SortIndicator = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-3 h-3 ml-2 inline text-gray-400 opacity-50" />;
     return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1 inline text-[#723332]" /> : <ChevronDown className="w-4 h-4 ml-1 inline text-[#723332]" />;
@@ -451,28 +455,38 @@ export default function App() {
             </div>
           </header>
 
-          {isMenuOpen && (
-            <div className="fixed inset-0 bg-[#f1ece0] z-[100] flex flex-col items-center justify-center animate-in fade-in duration-300">
-              <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 text-[#4b483c] hover:text-[#723332] transition-colors">
-                <X className="w-10 h-10 stroke-[1]" />
-              </button>
-              <nav className="flex flex-col items-center space-y-8 md:space-y-12">
-                {[
-                  { name: 'Home', id: 'home' },
-                  { name: 'Details', id: 'details' },
-                  { name: 'Travel', id: 'travel' },
-                  { name: 'Activities', id: 'activities' },
-                  { name: 'Registry', id: 'registry' },
-                  { name: 'FAQ', id: 'faq' },
-                  { name: 'RSVP', id: 'rsvp' }
-                ].map((item) => (
-                  <button key={item.id} onClick={() => scrollToSection(item.id)} className="font-title text-4xl md:text-6xl text-[#723332] hover:text-[#4b483c] transition-colors tracking-wide">
-                    {item.name}
-                  </button>
-                ))}
-              </nav>
-            </div>
-          )}
+          {/* FULL SCREEN MENU OVERLAY WITH SMOOTH CSS TRANSITIONS */}
+          <div 
+            className={`fixed inset-0 bg-[#f1ece0] z-[100] flex flex-col items-center justify-center transition-all duration-500 ease-in-out ${
+              isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 text-[#4b483c] hover:text-[#723332] transition-colors">
+              <X className="w-10 h-10 stroke-[1]" />
+            </button>
+            <nav className="flex flex-col items-center space-y-8 md:space-y-12">
+              {[
+                { name: 'Home', id: 'home' },
+                { name: 'Details', id: 'details' },
+                { name: 'Travel', id: 'travel' },
+                { name: 'Activities', id: 'activities' },
+                { name: 'Registry', id: 'registry' },
+                { name: 'FAQ', id: 'faq' },
+                { name: 'RSVP', id: 'rsvp' }
+              ].map((item, index) => (
+                <button 
+                  key={item.id} 
+                  onClick={() => scrollToSection(item.id)} 
+                  className={`font-title text-4xl md:text-6xl text-[#723332] hover:text-[#4b483c] transition-all duration-500 tracking-wide ${
+                    isMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
+                  }`}
+                  style={{ transitionDelay: isMenuOpen ? `${index * 50}ms` : '0ms' }}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </nav>
+          </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#f1ece0]">
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
