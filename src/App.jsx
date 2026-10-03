@@ -23,7 +23,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --------------------------------------------------------
-// DYNAMIC EVENT SORTING HELPER (Forces Wedding/Ceremony First)
+// DYNAMIC EVENT SORTING HELPER
 // --------------------------------------------------------
 const sortEventsDynamic = (eventsArray) => {
   return [...eventsArray].sort((a, b) => {
@@ -82,7 +82,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
       { threshold: 0.15 }
     );
     if (ref.current) observer.observe(ref.current);
-    return () => { if (ref.current) observer.unobserve(ref.current); };
+    return () => { if (ref.current) observer.unobserve(ref.target); };
   }, []);
 
   return (
@@ -157,26 +157,21 @@ export default function App() {
 
     signInAnonymously(auth).catch(error => console.error("Auth error:", error));
     
-    // Listen to Guests
     const unsubGuests = onSnapshot(collection(db, 'guests'), (snapshot) => {
       const guestData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setGuests(guestData);
       
       const rawEvents = Array.from(new Set(guestData.flatMap(g => g.events || [])));
-      
-      // Merge with database-configured event order
       const orderedEvents = sortEventsByConfig(rawEvents, customEventOrder);
       setAllUniqueEvents(orderedEvents);
       setFormAvailableEvents(prev => sortEventsByConfig(Array.from(new Set([...prev, ...orderedEvents])), customEventOrder));
     });
 
-    // Listen to Households
     const unsubHouseholds = onSnapshot(collection(db, 'households'), (snapshot) => {
       const hhData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setHouseholds(hhData);
     });
 
-    // Listen to Settings (Event Order)
     const unsubSettings = onSnapshot(doc(db, 'settings', 'events'), (docSnap) => {
       if (docSnap.exists() && docSnap.data().order) {
         setCustomEventOrder(docSnap.data().order);
@@ -191,7 +186,6 @@ export default function App() {
     };
   }, [customEventOrder]);
 
-  // Helper to sort events based on DB settings
   const sortEventsByConfig = (eventsArray, orderConfig) => {
     return [...eventsArray].sort((a, b) => {
       const indexA = orderConfig.indexOf(a);
@@ -239,36 +233,46 @@ export default function App() {
     return () => clearInterval(timer);
   }, [weddingDate]);
 
-  // OPTIMIZED PARALLAX SCROLL LISTENER
+  // BUTTERY SMOOTH LERP PARALLAX ENGINE
   useEffect(() => {
     if (isAdminRoute) return; 
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const scrollPos = window.scrollY;
-          setShowStickyHeader(scrollPos > window.innerHeight * 0.5);
+    
+    let targetScrollY = window.scrollY;
+    let currentScrollY = window.scrollY;
+    let reqId;
 
-          // We use offsetTop instead of getBoundingClientRect().top to prevent layout thrashing
-          if (heroBgRef.current) {
-            heroBgRef.current.style.transform = `translate3d(0, ${scrollPos * 0.3}px, 0)`;
-          }
-          if (registrySectionRef.current && registryBgRef.current) {
-            const offset = scrollPos - registrySectionRef.current.offsetTop;
-            registryBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
-          }
-          if (rsvpSectionRef.current && rsvpBgRef.current) {
-            const offset = scrollPos - rsvpSectionRef.current.offsetTop;
-            rsvpBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
-          }
-          ticking = false;
-        });
-        ticking = true;
-      }
+    const onScroll = () => {
+      targetScrollY = window.scrollY;
+      setShowStickyHeader(targetScrollY > window.innerHeight * 0.5);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); 
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    const smoothParallaxLoop = () => {
+      // Interpolate current scroll towards target scroll (10% ease per frame)
+      currentScrollY += (targetScrollY - currentScrollY) * 0.1;
+
+      // Apply transforms with GPU acceleration (translate3d)
+      if (heroBgRef.current) {
+        heroBgRef.current.style.transform = `translate3d(0, ${currentScrollY * 0.3}px, 0)`;
+      }
+      if (registrySectionRef.current && registryBgRef.current) {
+        const offset = currentScrollY - registrySectionRef.current.offsetTop;
+        registryBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
+      }
+      if (rsvpSectionRef.current && rsvpBgRef.current) {
+        const offset = currentScrollY - rsvpSectionRef.current.offsetTop;
+        rsvpBgRef.current.style.transform = `translate3d(0, ${offset * 0.25}px, 0)`;
+      }
+
+      reqId = requestAnimationFrame(smoothParallaxLoop);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    smoothParallaxLoop(); 
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(reqId);
+    };
   }, [isAdminRoute]);
 
   const scrollToSection = (id) => {
@@ -707,8 +711,8 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Added backfaceVisibility to prevent sub-pixel antialiasing jitter during hardware translation */}
-            <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')", backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}></div>
+            {/* Added willChange transform for hardware acceleration to ensure jitter-free lerping */}
+            <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" style={{ backgroundImage: "url('/hero.jpg')", willChange: 'transform' }}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#e6dbcc] via-[#e6dbcc]/40 to-transparent z-10 pointer-events-none"></div>
             
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
@@ -832,7 +836,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* COUNTDOWN SECTION - Lilac Majority */}
           <section className="py-24 bg-[#6c5d84] text-[#e6dbcc] relative z-20 shadow-inner">
             <div className="max-w-4xl mx-auto px-6 text-center">
               <RevealOnScroll delay={0}>
@@ -883,7 +886,7 @@ export default function App() {
           </section>
 
           <section ref={registrySectionRef} id="registry" className="relative py-40 flex items-center justify-center overflow-hidden">
-            <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')", backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}></div>
+            <div ref={registryBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/registry.jpg')", willChange: 'transform' }}></div>
             <RevealOnScroll delay={0} className="relative z-10 text-center max-w-2xl px-6 bg-[#e6dbcc]/90 backdrop-blur-sm p-16 md:p-24 border border-[#333036]/10 shadow-2xl">
               <h2 className="font-title text-5xl md:text-7xl text-[#6c5d84] mb-6">Registry</h2>
               <p className="font-details text-[#333036] text-xl leading-relaxed mb-12">Your presence at our wedding is the greatest gift we could ask for. Should you wish to honor us with a gift, we are registered at the links below.</p>
@@ -919,9 +922,8 @@ export default function App() {
             </div>
           </section>
 
-          {/* RSVP SECTION WITH FLORAL BACKGROUND AND PARALLAX */}
           <section ref={rsvpSectionRef} id="rsvp" className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-[#6c5d84]/15">
-            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')", backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}></div>
+            <div ref={rsvpBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')", willChange: 'transform' }}></div>
             <div className="absolute inset-0 bg-[#e6dbcc]/85 backdrop-blur-sm z-10 pointer-events-none"></div>
 
             <div className="max-w-xl w-full text-center relative z-20">
@@ -955,7 +957,7 @@ export default function App() {
             </div>
           </section>
 
-          {/* GUEST FACING RSVP MODAL (Events Dynamically Sorted by DB Configuration) */}
+          {/* GUEST FACING RSVP MODAL */}
           {selectedHousehold && (
             <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
               <div className="bg-[#e6dbcc] p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-300 border border-[#333036]/10">
@@ -1214,7 +1216,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* GUEST LIST EDITOR TABLE (Events Sorted by DB Config) */}
+                  {/* GUEST LIST EDITOR TABLE */}
                   <div className="flex-1 overflow-auto bg-[#e6dbcc]" style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}>
                     <table className="w-full text-left border-collapse min-w-max">
                       <thead style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif', fontWeight: 700 }} className="sticky top-0 bg-[#d2c4ae] border-b border-[#333036]/20 z-10 text-[10px] uppercase tracking-[0.2em] text-[#333036]">
