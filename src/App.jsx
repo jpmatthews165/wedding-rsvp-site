@@ -241,11 +241,24 @@ export default function App() {
     }
   };
 
-  const handleAdminRsvpUpdate = async (guestId, eventName, newStatus) => {
-    const guestRef = doc(db, 'guests', guestId);
-    await updateDoc(guestRef, {
-      [`rsvps.${eventName}`]: newStatus === 'pending' ? deleteField() : newStatus
-    });
+  const handleAdminEventAndRsvpUpdate = async (guest, eventName, newStatus) => {
+    const guestRef = doc(db, 'guests', guest.id);
+    
+    if (newStatus === 'not_invited') {
+      // Remove event from user's event list and wipe the RSVP data
+      const updatedEvents = (guest.events || []).filter(e => e !== eventName);
+      await updateDoc(guestRef, {
+        events: updatedEvents,
+        [`rsvps.${eventName}`]: deleteField()
+      });
+    } else {
+      // Add event to user's event list (if not present) and set RSVP status
+      const updatedEvents = [...new Set([...(guest.events || []), eventName])];
+      await updateDoc(guestRef, {
+        events: updatedEvents,
+        [`rsvps.${eventName}`]: newStatus === 'pending' ? deleteField() : newStatus
+      });
+    }
   };
 
   const processCsvUpload = (event) => {
@@ -412,13 +425,6 @@ export default function App() {
     };
   };
 
-  const StatusIcon = ({ isInvited, status }) => {
-    if (!isInvited) return <span className="text-[#a2ae99] text-sm">-</span>;
-    if (status === 'yes') return <CheckCircle2 className="w-5 h-5 text-green-700 mx-auto" />;
-    if (status === 'no') return <XCircle className="w-5 h-5 text-red-700 mx-auto" />;
-    return <Circle className="w-5 h-5 text-gray-300 mx-auto" />;
-  };
-
   const SortIndicator = ({ columnKey }) => {
     if (sortConfig.key !== columnKey) return <ArrowUpDown className="w-3 h-3 ml-2 inline text-gray-400 opacity-50" />;
     return sortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 ml-1 inline text-[#723332]" /> : <ChevronDown className="w-4 h-4 ml-1 inline text-[#723332]" />;
@@ -471,7 +477,7 @@ export default function App() {
             <div ref={heroBgRef} className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0 will-change-transform" style={{ backgroundImage: "url('/hero.jpg')" }}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-[#f1ece0] via-[#f1ece0]/40 to-transparent z-10 pointer-events-none"></div>
             <RevealOnScroll className="relative z-20 text-center space-y-8 p-4 mt-16">
-              <p className="font-subtitle tracking-[0.2em] uppercase text-xs md:text-sm text-[#4b483c]">We invite you to celebrate with us</p>
+              <p className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-[#4b483c]">We invite you to celebrate with us</p>
               <h1 className="font-title text-7xl md:text-[10rem] leading-none text-[#723332] drop-shadow-sm">Josh &<br />Sneha</h1>
             </RevealOnScroll>
           </section>
@@ -484,12 +490,12 @@ export default function App() {
                   <div className="h-px w-24 bg-[#4b483c] mx-auto md:mx-0"></div>
                 </RevealOnScroll>
                 <RevealOnScroll delay={100} className="space-y-2">
-                  <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm text-[#4b483c]">When</p>
+                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">When</p>
                   <p className="font-title text-4xl md:text-5xl text-[#723332]">Saturday, May 29th</p>
                   <p className="font-details text-2xl text-[#723332] italic mt-2">Ten O'Clock in the morning</p>
                 </RevealOnScroll>
                 <RevealOnScroll delay={200} className="space-y-2">
-                  <p className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm text-[#4b483c]">Where</p>
+                  <p className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-[#4b483c]">Where</p>
                   <p className="font-title text-4xl md:text-5xl text-[#723332]">Lucien's Manor</p>
                   <p className="font-details text-xl text-[#4b483c] tracking-wide mt-2">81 W White Horse Pike<br/>Berlin, NJ 08009</p>
                 </RevealOnScroll>
@@ -825,12 +831,14 @@ export default function App() {
                           <td className="px-6 py-3 text-sm text-gray-500">{guest.ageRange || 'Adult'}</td>
                           {allUniqueEvents.map(evt => {
                             const isInvited = guest.events?.includes(evt);
-                            if (!isInvited) return <td key={evt} className="px-6 py-3 text-center border-l border-gray-100"><span className="text-gray-300 text-sm">-</span></td>;
-                            const status = guest.rsvps?.[evt] || 'pending';
+                            const status = isInvited ? (guest.rsvps?.[evt] || 'pending') : 'not_invited';
                             return (
                               <td key={evt} className="px-6 py-3 text-center border-l border-gray-100">
-                                <select value={status} onChange={(e) => handleAdminRsvpUpdate(guest.id, evt, e.target.value)} className={`text-xs uppercase tracking-wider font-medium outline-none cursor-pointer border px-2 py-1 rounded transition-colors ${status === 'yes' ? 'bg-green-50 text-green-700 border-green-200' : status === 'no' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'}`}>
-                                  <option value="pending">Pending</option><option value="yes">Accepted</option><option value="no">Declined</option>
+                                <select value={status} onChange={(e) => handleAdminEventAndRsvpUpdate(guest, evt, e.target.value)} className={`text-xs uppercase tracking-wider font-medium outline-none cursor-pointer border px-2 py-1 rounded transition-colors ${status === 'yes' ? 'bg-green-50 text-green-700 border-green-200' : status === 'no' ? 'bg-red-50 text-red-700 border-red-200' : status === 'not_invited' ? 'bg-gray-100 text-gray-400 border-transparent hover:border-gray-300' : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                                  <option value="not_invited">Not Invited</option>
+                                  <option value="pending">Pending</option>
+                                  <option value="yes">Accepted</option>
+                                  <option value="no">Declined</option>
                                 </select>
                               </td>
                             );
