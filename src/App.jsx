@@ -99,7 +99,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
 };
 
 // --------------------------------------------------------
-// ISOLATED COUNTDOWN COMPONENT (Prevents whole-app re-renders)
+// ISOLATED COUNTDOWN TIMER (Prevents full app jitter/re-renders)
 // --------------------------------------------------------
 const CountdownTimer = ({ targetDate }) => {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -260,54 +260,67 @@ export default function App() {
     handleSaveEventOrder(newOrder);
   };
 
-  // HIGH-PERFORMANCE NON-THRASHING PARALLAX ENGINE
+  // --------------------------------------------------------
+  // TIGHT LERP PARALLAX ENGINE (Fixes Desktop Mouse Wheel Jitter)
+  // --------------------------------------------------------
   useEffect(() => {
     if (isAdminRoute) return; 
-    let ticking = false;
-    
-    // Cache the offsets to absolutely zero-out layout thrashing
+    let targetScrollY = window.scrollY;
+    let currentScrollY = window.scrollY;
+    let reqId;
     let registryTop = 0;
     let rsvpTop = 0;
 
+    // Cache section positions mathematically to absolutely prevent layout thrashing
     const updateOffsets = () => {
-      if (registrySectionRef.current) registryTop = registrySectionRef.current.offsetTop;
-      if (rsvpSectionRef.current) rsvpTop = rsvpSectionRef.current.offsetTop;
-    };
-
-    // Give the DOM a tiny fraction of a second to paint before caching offsets
-    setTimeout(updateOffsets, 100);
-    window.addEventListener('resize', updateOffsets, { passive: true });
-
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const scrollY = window.scrollY;
-          setShowStickyHeader(scrollY > window.innerHeight * 0.5);
-
-          // Apply 3D transforms using strictly cached values and scrollY (No layout reads)
-          if (heroBgRef.current) {
-            heroBgRef.current.style.transform = `translate3d(0px, ${scrollY * 0.35}px, 0px)`;
-          }
-          if (registryBgRef.current) {
-            const offset = scrollY - registryTop;
-            registryBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
-          }
-          if (rsvpBgRef.current) {
-            const offset = scrollY - rsvpTop;
-            rsvpBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
-          }
-          ticking = false;
-        });
-        ticking = true;
+      if (registrySectionRef.current) {
+        registryTop = registrySectionRef.current.getBoundingClientRect().top + window.scrollY;
+      }
+      if (rsvpSectionRef.current) {
+        rsvpTop = rsvpSectionRef.current.getBoundingClientRect().top + window.scrollY;
       }
     };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); 
     
+    // Wait for images to paint before grabbing heights
+    setTimeout(updateOffsets, 300);
+    window.addEventListener('resize', updateOffsets, { passive: true });
+
+    const onScroll = () => {
+      targetScrollY = window.scrollY;
+      setShowStickyHeader(targetScrollY > window.innerHeight * 0.5);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const smoothParallaxLoop = () => {
+      // Interpolate 25% of the distance per frame. Fast enough to track seamlessly, 
+      // but smooths out the chunky 100px jumps from desktop mouse wheels.
+      currentScrollY += (targetScrollY - currentScrollY) * 0.25;
+
+      // Prevent infinite micro-calculations
+      if (Math.abs(targetScrollY - currentScrollY) < 0.5) {
+        currentScrollY = targetScrollY;
+      }
+
+      if (heroBgRef.current) {
+        heroBgRef.current.style.transform = `translate3d(0px, ${currentScrollY * 0.35}px, 0px)`;
+      }
+      if (registryBgRef.current) {
+        const offset = currentScrollY - registryTop;
+        registryBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
+      }
+      if (rsvpBgRef.current) {
+        const offset = currentScrollY - rsvpTop;
+        rsvpBgRef.current.style.transform = `translate3d(0px, ${offset * 0.25}px, 0px)`;
+      }
+
+      reqId = requestAnimationFrame(smoothParallaxLoop);
+    };
+    smoothParallaxLoop(); 
+
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', updateOffsets);
+      cancelAnimationFrame(reqId);
     };
   }, [isAdminRoute]);
 
@@ -747,12 +760,12 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Added GPU acceleration CSS properties to ensure buttery smooth performance */}
+            {/* Added Hardware Acceleration Tags to Parallax Div */}
             <div 
               ref={heroBgRef} 
               className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
               style={{ 
-                backgroundImage: "url('/hero.jpg')", 
+                backgroundImage: "url('/hero.jpg')",
                 willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
@@ -924,7 +937,7 @@ export default function App() {
               ref={registryBgRef} 
               className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
               style={{ 
-                backgroundImage: "url('/registry.jpg')", 
+                backgroundImage: "url('/registry.jpg')",
                 willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
@@ -971,7 +984,7 @@ export default function App() {
               ref={rsvpBgRef} 
               className="absolute -top-[30%] left-0 w-full h-[160%] bg-cover bg-center z-0" 
               style={{ 
-                backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')", 
+                backgroundImage: "url('https://images.unsplash.com/photo-1618108571494-7065bc619e68?q=80&w=1227&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
                 willChange: 'transform',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
