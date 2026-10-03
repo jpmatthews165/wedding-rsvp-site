@@ -65,14 +65,14 @@ const getEditDistance = (a, b) => {
 };
 
 // --------------------------------------------------------
-// ANIMATION COMPONENT (Set to trigger 1/5th up from bottom)
+// ANIMATION COMPONENT (Set to trigger 10% up from bottom)
 // --------------------------------------------------------
 const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
-    // rootMargin -20% forces the intersection to trigger exactly 1/5th above the bottom of the viewport
+    // rootMargin -10% forces the intersection to trigger exactly 10% above the bottom of the viewport
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -80,7 +80,7 @@ const RevealOnScroll = ({ children, delay = 0, className = "" }) => {
           observer.unobserve(entry.target);
         }
       },
-      { threshold: 0, rootMargin: '0px 0px -20% 0px' }
+      { threshold: 0, rootMargin: '0px 0px -10% 0px' }
     );
     if (ref.current) observer.observe(ref.current);
     return () => { if (ref.current) observer.unobserve(ref.target); };
@@ -262,7 +262,7 @@ export default function App() {
   };
 
   // --------------------------------------------------------
-  // ULTIMATE 60FPS PARALLAX ENGINE (No event listener layout thrashing)
+  // ULTIMATE 60FPS PARALLAX ENGINE
   // --------------------------------------------------------
   useEffect(() => {
     if (isAdminRoute) return; 
@@ -272,17 +272,14 @@ export default function App() {
     const parallaxLoop = () => {
       const scrollY = window.scrollY;
       
-      // Only process DOM logic if the user actually scrolled since last frame
       if (scrollY !== lastScrollY) {
         lastScrollY = scrollY;
         
         setShowStickyHeader(scrollY > window.innerHeight * 0.5);
 
-        // 1. READ PHASE: Grab bounding rects (Reading does not cause thrashing)
         const registryRect = registrySectionRef.current?.getBoundingClientRect();
         const rsvpRect = rsvpSectionRef.current?.getBoundingClientRect();
 
-        // 2. WRITE PHASE: Apply transforms to GPU (Writing directly after reading prevents forced reflows)
         if (heroBgRef.current) {
           heroBgRef.current.style.transform = `translate3d(0, ${scrollY * 0.4}px, 0)`;
         }
@@ -294,7 +291,6 @@ export default function App() {
         }
       }
       
-      // Loop again at monitor refresh rate
       reqId = requestAnimationFrame(parallaxLoop);
     };
     
@@ -739,7 +735,6 @@ export default function App() {
           </div>
 
           <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden bg-[#e6dbcc]">
-            {/* Added GPU properties to strictly prevent browser rendering bugs */}
             <div 
               ref={heroBgRef} 
               className="absolute -top-[25%] left-0 w-full h-[150%] bg-cover bg-center z-0" 
@@ -1327,7 +1322,7 @@ export default function App() {
                                     </select>
                                   </td>
                                 );
-                              })}
+                              });}
 
                               <td className="px-6 py-3 text-center">
                                 {isEditing ? (
