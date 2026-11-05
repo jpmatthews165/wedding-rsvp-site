@@ -11,7 +11,7 @@ React 19 + Vite + Tailwind 3, Firebase (Firestore + Google Auth), Vercel (hostin
   - `src/site/sections/Sections.jsx`: one component per section type. `RsvpSection.jsx` is the guest RSVP flow.
   - `src/site/editing.jsx`: `<T f="field" />` renders a text field and makes it click-to-edit inside the editor. Use it for any new text.
   - `src/components/ParallaxBackground.jsx`: universal parallax.
-- **Admin**: `/admin` → `src/admin/AdminApp.jsx` (guests, households, events). `/admin/editor` → `src/admin/editor/` (visual editor, AI assistant, publish history). `/preview-frame` renders the site inside the editor's iframe.
+- **Admin**: `/admin` → `src/admin/AdminApp.jsx` (sidebar shell; page in the URL hash). Pages in `src/admin/pages/` (Overview, Guests, Households, Events), dialogs in `src/admin/dialogs.jsx`, shared UI and RSVP status colors in `src/admin/ui.jsx`. All Firestore reads/writes for guests, households and events live in `src/admin/useGuestData.js`. `/admin/editor` → `src/admin/editor/` (visual editor, AI assistant, publish history). `/preview-frame` renders the site inside the editor's iframe.
 - **API** (`api/`, Vercel functions, Firebase Admin SDK):
   - `lookup.js`, `household.js` and `rsvp.js`: guest RSVP. Guests never read Firestore directly.
   - `assistant.js`: the "Ask Claude" companion (Anthropic SDK, `claude-opus-5-5`). It returns edit *operations* (`set`/`insert`/`remove`/`move` on dotted paths) that the editor applies to the draft.
