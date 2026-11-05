@@ -37,7 +37,8 @@ Merging this code before steps 1–2 will break RSVPs on the live site, because 
 ## Editing the website
 
 Go to `/admin/editor` (or click **Edit Website** in the admin dashboard) and sign in with Google.
-- **Click any text** in the preview to change it. Click a section to open all of its settings in the left panel: photos, links, lists, show/hide, and menu label.
+- **Click any text** in the preview to change it. Use **Reposition** on any photo to choose what stays in view, with an optional separate position for phones.
+- **Site settings → Colors & fonts:** choose a palette or pick individual colors, and use the site fonts, any Google Font, or an uploaded font file. Click a section to open all of its settings in the left panel: photos, links, lists, show/hide, and menu label.
 - **Sections:** add, reorder, hide, duplicate or delete them. New types include Schedule, Text block, Cards and Photo gallery.
 - **Ask Claude:** describe a change ("add our sangeet to the schedule", "make the FAQ warmer") and it appears in the preview immediately. Anything it can't do is saved as a request for Josh.
 - Changes autosave as a **draft**. Nothing changes for guests until you click **Publish**. **History** lets you go back to any earlier published version, and Undo/Redo work as usual.

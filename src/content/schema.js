@@ -30,7 +30,8 @@ export const SECTION_TYPES = {
       { key: 'image', label: 'Background photo', type: 'image' },
       ...navFields,
     ],
-    template: { eyebrow: 'We invite you to celebrate with us', title: 'Our Names', buttonText: 'RSVP Now', image: '/hero.jpg' },
+    // Default photo position keeps the couple below the names (tested at 1280×720, 1440×900, phone).
+    template: { eyebrow: 'We invite you to celebrate with us', title: 'Our Names', buttonText: 'RSVP Now', image: '/hero.jpg', imagePos: { x: 50, y: 25, zoom: 1, mobile: { x: 50, y: 10, zoom: 1.3 } } },
   },
   details: {
     label: 'Wedding details', description: 'When & where, map, calendar button, photo.',
@@ -212,6 +213,10 @@ export const normalizeContent = (raw, defaults) => {
     ...structuredClone(defaults),
     ...raw,
     site: { ...defaults.site, ...(raw.site || {}) },
+    theme: {
+      colors: { ...defaults.theme.colors, ...(raw.theme?.colors || {}) },
+      fonts: Object.fromEntries(Object.keys(defaults.theme.fonts).map((k) => [k, { ...defaults.theme.fonts[k], ...(raw.theme?.fonts?.[k] || {}) }])),
+    },
     sections: raw.sections.filter((s) => s && SECTION_TYPES[s.type]).map((s) => ({
       visible: true, showInNav: false, ...SECTION_TYPES[s.type].template, ...s,
     })),

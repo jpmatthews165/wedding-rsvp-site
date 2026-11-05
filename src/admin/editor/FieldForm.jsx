@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Copy, ImagePlus, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Copy, ImagePlus, Move, Plus, Trash2, X } from 'lucide-react';
+import { coverStyle } from '../../site/CoverImage.jsx';
 import { COMMON_TIME_ZONES } from '../../content/time.js';
 
 export const inputCls = 'w-full rounded-md border border-[#333036]/20 bg-white px-3 py-2 text-sm text-[#333036] outline-none focus:border-[#6c5d84] focus:ring-2 focus:ring-[#6c5d84]/20';
@@ -22,14 +23,21 @@ function Toggle({ checked, onChange, label }) {
   );
 }
 
-function ImageField({ value, onPick, onClear }) {
+function ImageField({ value, pos, onPick, onClear, onAdjust }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="w-20 h-14 rounded-md bg-[#333036]/10 bg-cover bg-center border border-[#333036]/10 shrink-0" style={value ? { backgroundImage: `url('${value}')` } : undefined} />
+      <div className="relative w-20 h-14 rounded-md overflow-hidden bg-[#333036]/10 border border-[#333036]/10 shrink-0">
+        {value && <img src={value} alt="" className="absolute inset-0 w-full h-full" style={coverStyle(pos)} />}
+      </div>
       <div className="flex flex-col gap-1.5">
         <button type="button" onClick={onPick} className="flex items-center gap-1.5 text-xs font-semibold text-[#6c5d84] hover:underline">
           <ImagePlus className="w-3.5 h-3.5" /> {value ? 'Change photo' : 'Add photo'}
         </button>
+        {value && (
+          <button type="button" onClick={onAdjust} className="flex items-center gap-1.5 text-xs font-semibold text-[#6c5d84] hover:underline">
+            <Move className="w-3.5 h-3.5" /> Reposition
+          </button>
+        )}
         {value && (
           <button type="button" onClick={onClear} className="flex items-center gap-1.5 text-xs text-[#333036]/60 hover:text-[#7a4d55]">
             <X className="w-3.5 h-3.5" /> Remove
@@ -40,7 +48,7 @@ function ImageField({ value, onPick, onClear }) {
   );
 }
 
-function ListField({ field, items = [], path, onChange, onPickImage }) {
+function ListField({ field, items = [], path, onChange, onPickImage, onAdjustImage }) {
   const [open, setOpen] = useState(null);
   const setItems = (next) => onChange(path, next);
   const move = (i, d) => {
@@ -69,7 +77,7 @@ function ListField({ field, items = [], path, onChange, onPickImage }) {
             </div>
             {isOpen && (
               <div className="border-t border-[#333036]/10 p-3 space-y-3">
-                <Fields fields={field.itemFields} data={item} basePath={`${path}.${i}`} onChange={onChange} onPickImage={onPickImage} />
+                <Fields fields={field.itemFields} data={item} basePath={`${path}.${i}`} onChange={onChange} onPickImage={onPickImage} onAdjustImage={onAdjustImage} />
               </div>
             )}
           </div>
@@ -87,7 +95,7 @@ function ListField({ field, items = [], path, onChange, onPickImage }) {
 }
 
 // Renders a set of schema fields. onChange(path, value) with full dotted paths.
-export function Fields({ fields, data, basePath, onChange, onPickImage }) {
+export function Fields({ fields, data, basePath, onChange, onPickImage, onAdjustImage }) {
   return fields.map((f) => {
     const path = `${basePath}.${f.key}`;
     const value = data?.[f.key];
@@ -99,7 +107,7 @@ export function Fields({ fields, data, basePath, onChange, onPickImage }) {
         control = <textarea className={`${inputCls} min-h-[88px] resize-y`} value={value ?? ''} onChange={(e) => onChange(path, e.target.value)} />;
         break;
       case 'image':
-        control = <ImageField value={value} onPick={() => onPickImage(path)} onClear={() => onChange(path, '')} />;
+        control = <ImageField value={value} pos={data?.[`${f.key}Pos`]} onPick={() => onPickImage(path)} onAdjust={() => onAdjustImage?.(path)} onClear={() => onChange(path, '')} />;
         break;
       case 'url':
         control = <input type="url" className={inputCls} placeholder="https://…" value={value ?? ''} onChange={(e) => onChange(path, e.target.value.trim())} />;
@@ -115,7 +123,7 @@ export function Fields({ fields, data, basePath, onChange, onPickImage }) {
         );
         break;
       case 'list':
-        control = <ListField field={f} items={value} path={path} onChange={onChange} onPickImage={onPickImage} />;
+        control = <ListField field={f} items={value} path={path} onChange={onChange} onPickImage={onPickImage} onAdjustImage={onAdjustImage} />;
         break;
       default:
         control = <input type="text" className={inputCls} value={value ?? ''} onChange={(e) => onChange(path, e.target.value)} />;

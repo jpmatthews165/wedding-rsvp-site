@@ -6,8 +6,11 @@
 // - Text fields may contain "\n" for line breaks.
 // - Every section has: id (unique), type, visible, showInNav, navLabel.
 
+import { DEFAULT_THEME } from './theme.js';
+
 export const DEFAULT_CONTENT = {
   version: 1,
+  theme: DEFAULT_THEME,
   site: {
     coupleNames: 'Josh & Sneha',
     browserTitle: 'Josh & Sneha · May 29, 2027',
@@ -25,6 +28,7 @@ export const DEFAULT_CONTENT = {
       title: 'Josh &\nSneha',
       buttonText: 'RSVP Now',
       image: '/hero.jpg',
+      imagePos: { x: 50, y: 25, zoom: 1, mobile: { x: 50, y: 10, zoom: 1.3 } },
     },
     {
       id: 'details', type: 'details', visible: true, showInNav: true, navLabel: 'Details',

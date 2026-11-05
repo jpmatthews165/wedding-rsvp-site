@@ -14,6 +14,8 @@ import { DRAFT_DOC, HISTORY_COLLECTION, PUBLISHED_DOC } from '../../content/useS
 import { getAt, setAt, toPlain } from '../../content/paths.js';
 import { Fields } from './FieldForm.jsx';
 import ImagePicker from './ImagePicker.jsx';
+import ImageAdjust from './ImageAdjust.jsx';
+import ThemePanel from './ThemePanel.jsx';
 import AssistantPanel from './AssistantPanel.jsx';
 
 const DEVICES = {
@@ -97,6 +99,8 @@ export function Editor({ auth, email, dryRun = false }) {
   const [selected, setSelected] = useState(null);       // null | 'site' | 'sections.N'
   const [device, setDevice] = useState('desktop');
   const [picker, setPicker] = useState(null);           // path of image field being changed
+  const [adjusting, setAdjusting] = useState(null);     // path of image field being repositioned
+  const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -180,6 +184,7 @@ export function Editor({ auth, email, dryRun = false }) {
       if (m.type === 'edit') setField(m.path, m.value);
       if (m.type === 'select') setSelected(m.base);
       if (m.type === 'pickImage') setPicker(m.path);
+      if (m.type === 'adjustImage') setAdjusting(m.path);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
@@ -286,7 +291,7 @@ export function Editor({ auth, email, dryRun = false }) {
               <span className="text-sm text-[#333036]">Visible on site</span>
               <input type="checkbox" className="accent-[#6c5d84] w-4 h-4" checked={selSection.visible !== false} onChange={(e) => setField(`${selected}.visible`, e.target.checked)} />
             </label>
-            <Fields fields={SECTION_TYPES[selSection.type].fields} data={selSection} basePath={selected} onChange={setField} onPickImage={setPicker} />
+            <Fields fields={SECTION_TYPES[selSection.type].fields} data={selSection} basePath={selected} onChange={setField} onPickImage={setPicker} onAdjustImage={setAdjusting} />
           </div>
         </>
       ) : selected === 'site' ? (
@@ -295,8 +300,16 @@ export function Editor({ auth, email, dryRun = false }) {
             <button onClick={() => setSelected(null)} className="p-1 -ml-1 rounded hover:bg-[#333036]/5" aria-label="Back"><ArrowLeft className="w-4 h-4" /></button>
             <p className="text-sm font-semibold text-[#333036]">Site settings</p>
           </div>
+          <div className="flex border-b border-[#333036]/10 text-sm">
+            {[['details', 'Details'], ['theme', 'Colors & fonts']].map(([k, label]) => (
+              <button key={k} onClick={() => setSiteTab(k)}
+                className={`flex-1 py-2.5 ${siteTab === k ? 'text-[#6c5d84] font-semibold border-b-2 border-[#6c5d84]' : 'text-[#333036]/60 hover:text-[#333036]'}`}>{label}</button>
+            ))}
+          </div>
           <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-            <Fields fields={SITE_FIELDS} data={content.site} basePath="site" onChange={setField} onPickImage={setPicker} />
+            {siteTab === 'details'
+              ? <Fields fields={SITE_FIELDS} data={content.site} basePath="site" onChange={setField} onPickImage={setPicker} onAdjustImage={setAdjusting} />
+              : <ThemePanel theme={content.theme} onChange={setField} getToken={auth.getToken} />}
           </div>
         </>
       ) : (
@@ -324,7 +337,7 @@ export function Editor({ auth, email, dryRun = false }) {
             <AddSectionMenu sections={sections} onAdd={addSection} />
           </div>
           <button onClick={() => setSelected('site')} className="m-3 flex items-center gap-2 rounded-md border border-[#333036]/15 bg-white px-3 py-2.5 text-sm text-[#333036] hover:border-[#6c5d84]/40">
-            <Settings2 className="w-4 h-4 text-[#6c5d84]" /> Site settings <span className="text-[11px] text-[#333036]/50 ml-auto">date, names, footer</span>
+            <Settings2 className="w-4 h-4 text-[#6c5d84]" /> Site settings <span className="text-[11px] text-[#333036]/50 ml-auto">date, colors, fonts</span>
           </button>
         </>
       )}
@@ -407,8 +420,21 @@ export function Editor({ auth, email, dryRun = false }) {
           content={content}
           current={getAt(content, picker)}
           getToken={auth.getToken}
-          onSelect={(url) => { setField(picker, url); setPicker(null); }}
+          onSelect={(url) => {
+            // A new photo starts centered rather than inheriting the old photo's position.
+            if (url !== getAt(content, picker)) setField(`${picker}Pos`, { x: 50, y: 50, zoom: 1 });
+            setField(picker, url);
+            setPicker(null);
+          }}
           onClose={() => setPicker(null)}
+        />
+      )}
+      {adjusting && getAt(content, adjusting) && (
+        <ImageAdjust
+          src={getAt(content, adjusting)}
+          pos={getAt(content, `${adjusting}Pos`)}
+          onChange={(pos) => setField(`${adjusting}Pos`, pos)}
+          onClose={() => setAdjusting(null)}
         />
       )}
       {showPublish && (

@@ -9,6 +9,7 @@ const SUGGESTIONS = [
   'Add a schedule section with our sangeet, mehndi, ceremony and reception',
   'Make the FAQ sound warmer and add a question about the hashtag',
   'Change the hotel to the Hampton Inn in Mount Laurel',
+  'Try a sage green color palette with a script font for our names',
   'Hide the countdown and move the registry above travel',
 ];
 

@@ -35,8 +35,13 @@ npm run build
 npm run lint
 ```
 
+## Theme and photos
+
+- Colors and fonts are editable (Site settings → Colors & fonts) and stored in `content.theme`. In site code, **use the theme tokens, never hex colors**: `bg-paper`, `bg-paper2`, `text-brand`, `bg-brand-dark`, `text-ink`, `text-ink-soft`, `bg-accent`, `border-accent2` (opacity modifiers like `bg-brand/40` work). Fonts: `font-title`, `font-subtitle`, `font-details`. These map to CSS variables set by `src/site/ThemeStyle.jsx` from `src/content/theme.js`.
+- Photos use `<CoverImage src pos />` or `<ParallaxBackground image pos />`. The position is stored next to the image as `<field>Pos` (`{ x, y, zoom, mobile? }`) and edited with the editor's Reposition tool.
+- The admin and editor screens use fixed hex colors on purpose, so they don't change with the site theme.
+
 ## Conventions
 
-- Colors: background `#e6dbcc`, alt `#dccfb9`, primary purple `#6c5d84`, text `#333036`, rose `#d4a5a5`. Fonts: `font-title` (Le Major), `font-subtitle` (Ablation), `font-details` (Cardo).
 - Never expose guest contact data to the public site; anything guest-facing goes through `/api`.
 - Work on a branch; Vercel builds a preview for every pushed branch. Merging to `main` deploys.

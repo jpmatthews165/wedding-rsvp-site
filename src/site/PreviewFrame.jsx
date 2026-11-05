@@ -30,9 +30,10 @@ export default function PreviewFrame() {
       onEdit: (path, value) => send({ type: 'edit', path, value }),
       onSelect: (base) => { setSelected(base); send({ type: 'select', base }); },
       onPickImage: (path) => send({ type: 'pickImage', path }),
+      onAdjustImage: (path) => send({ type: 'adjustImage', path }),
     };
   }, [selected]);
 
-  if (!content) return <div className="min-h-screen bg-[#e6dbcc]" />;
+  if (!content) return <div className="min-h-screen bg-paper" />;
   return <Site content={content} edit={edit} />;
 }

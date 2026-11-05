@@ -1,5 +1,5 @@
 // POST /api/upload — issues short-lived upload tokens for Vercel Blob so the editor can
-// upload photos straight from the browser. Only signed-in admins get a token.
+// upload photos and fonts straight from the browser. Only signed-in admins get a token.
 //
 // Required: a Vercel Blob store connected to this project (Vercel → Storage → Blob),
 // which adds the BLOB_READ_WRITE_TOKEN environment variable automatically.
@@ -18,9 +18,11 @@ export default async function handler(req, res) {
       body: readJsonBody(req),
       onBeforeGenerateToken: async (pathname, clientPayload) => {
         await verifyAdminToken(clientPayload);
-        if (!pathname.startsWith('site/')) throw new Error('Invalid path');
+        if (!pathname.startsWith('site/') && !pathname.startsWith('fonts/')) throw new Error('Invalid path');
         return {
-          allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+          allowedContentTypes: pathname.startsWith('fonts/')
+            ? ['font/woff2', 'font/woff', 'font/ttf', 'font/otf']
+            : ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
           maximumSizeInBytes: 15 * 1024 * 1024,
           addRandomSuffix: true,
         };

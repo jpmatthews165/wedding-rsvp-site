@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Default theme. The site overrides these from content.theme (src/content/theme.js). */
+:root {
+  --c-paper: 230 219 204;
+  --c-paper2: 220 207 185;
+  --c-brand: 108 93 132;
+  --c-brand-dark: 82 69 105;
+  --c-ink: 51 48 54;
+  --c-ink-soft: 74 69 82;
+  --c-accent: 212 165 165;
+  --c-accent2: 176 196 222;
+  --font-title: 'Le Major', serif;
+  --font-subtitle: 'Ablation', sans-serif;
+  --font-body: 'Cardo', serif;
+}
+
 @font-face {
   font-family: 'Le Major';
   src: url('/fonts/LeMajor-Regular.ttf') format('truetype');

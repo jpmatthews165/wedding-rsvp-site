@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { upload } from '@vercel/blob/client';
+import { uploadFile } from './upload.js';
 import { Link2, Loader2, Upload, X } from 'lucide-react';
 import { inputCls } from './FieldForm.jsx';
 
@@ -47,14 +47,7 @@ export default function ImagePicker({ content, current, getToken, onSelect, onCl
     setBusy(true);
     try {
       const resized = await resizeImage(file);
-      const token = await getToken();
-      const safeName = resized.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
-      const blob = await upload(`site/${Date.now()}-${safeName}`, resized, {
-        access: 'public',
-        handleUploadUrl: '/api/upload',
-        clientPayload: token,
-      });
-      onSelect(blob.url);
+      onSelect(await uploadFile(resized, getToken, 'site'));
     } catch (err) {
       setError(`Upload failed: ${err.message}. You can also paste an image link below.`);
     } finally {

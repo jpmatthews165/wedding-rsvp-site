@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import CoverImage from '../site/CoverImage.jsx';
 
 // --------------------------------------------------------
 // UNIVERSAL PARALLAX BACKGROUND
@@ -13,7 +14,7 @@ import { useEffect, useRef } from 'react';
 // The layer is sized from the section's real height and the viewport so the
 // image always covers the section at every scroll position — no gaps, and no
 // more zoom than necessary.
-export default function ParallaxBackground({ image, speed = 0.25, position = 'center' }) {
+export default function ParallaxBackground({ image, speed = 0.25, pos }) {
   const layerRef = useRef(null);
 
   useEffect(() => {
@@ -81,16 +82,16 @@ export default function ParallaxBackground({ image, speed = 0.25, position = 'ce
     <div
       ref={layerRef}
       aria-hidden="true"
-      className="absolute left-0 w-full bg-cover z-0 pointer-events-none"
+      className="absolute left-0 w-full z-0 pointer-events-none overflow-hidden"
       style={{
         top: 0,
         height: '100%',
-        backgroundImage: `url('${image}')`,
-        backgroundPosition: position,
         willChange: 'transform',
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
       }}
-    />
+    >
+      <CoverImage src={image} pos={pos} />
+    </div>
   );
 }

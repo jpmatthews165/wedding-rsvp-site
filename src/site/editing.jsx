@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
-import { ImagePlus } from 'lucide-react';
+import { ImagePlus, Move } from 'lucide-react';
 import { getAt } from '../content/paths.js';
 
 // When the site renders inside the editor, EditContext carries callbacks back to it.
@@ -86,16 +86,21 @@ export const useShow = (f) => {
 // Overlay button on photos in the editor.
 export function ImageButton({ f, className = '' }) {
   const edit = useEdit();
-  const { base } = useSection();
+  const { section, base } = useSection();
   if (!edit) return null;
+  const hasImage = !!getAt(section, f);
+  const pill = 'flex items-center gap-1.5 bg-white/90 text-ink text-xs font-sans font-semibold px-3 py-2 rounded-full shadow-lg hover:bg-white';
   return (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); edit.onPickImage(`${base}.${f}`); }}
-      className={`absolute z-40 flex items-center gap-2 bg-white/90 text-[#333036] text-xs font-sans font-semibold px-3 py-2 rounded-full shadow-lg hover:bg-white ${className}`}
-    >
-      <ImagePlus className="w-4 h-4" /> Change photo
-    </button>
+    <div className={`absolute z-40 flex gap-2 ${className}`}>
+      <button type="button" className={pill} onClick={(e) => { e.stopPropagation(); edit.onPickImage(`${base}.${f}`); }}>
+        <ImagePlus className="w-4 h-4" /> {hasImage ? 'Change photo' : 'Add photo'}
+      </button>
+      {hasImage && (
+        <button type="button" className={pill} onClick={(e) => { e.stopPropagation(); edit.onAdjustImage(`${base}.${f}`); }}>
+          <Move className="w-4 h-4" /> Reposition
+        </button>
+      )}
+    </div>
   );
 }
 
