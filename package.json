@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0",
+    "@vercel/blob": "^2.8.2",
     "firebase": "^12.19.0",
     "firebase-admin": "^13.10.0",
     "lucide-react": "^1.50.0",

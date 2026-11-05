@@ -6,7 +6,9 @@ rules_version = '2';
 // - Guests never touch Firestore directly; their lookups and RSVPs go through
 //   the /api functions on Vercel (which use the Admin SDK and skip these rules).
 // - Only the admin Google accounts below can read or change guest data.
-// - Anyone may read /settings (event order, and later the editable site content).
+// - Anyone may read /settings (event order and the published site content),
+//   except the editor's unpublished draft (settings/contentDraft).
+// - contentHistory (past publishes) and editRequests are admin-only via the catch-all.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -20,7 +22,7 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if true;
+      allow read: if docId != 'contentDraft' || isAdmin();
     }
 
     match /{document=**} {

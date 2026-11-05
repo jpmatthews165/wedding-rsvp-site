@@ -41,3 +41,30 @@
   font-style: italic;
   font-display: swap;
 }
+
+/* ---------- Editor preview (only active inside /preview-frame) ---------- */
+.edit-mode [data-editable] {
+  cursor: text;
+  border-radius: 2px;
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+  transition: outline-color 0.15s;
+  min-width: 1ch;
+}
+.edit-mode [data-editable]:hover { outline-color: rgba(108, 93, 132, 0.55); }
+.edit-mode [data-editable]:focus { outline: 2px solid #6c5d84; background: rgba(255, 255, 255, 0.35); }
+.edit-mode [data-editable]:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.4;
+  font-style: italic;
+}
+.edit-section { box-shadow: inset 0 0 0 0 transparent; transition: box-shadow 0.2s; }
+.edit-section:hover { box-shadow: inset 0 0 0 2px rgba(108, 93, 132, 0.25); }
+.edit-section-selected, .edit-section-selected:hover { box-shadow: inset 0 0 0 3px #6c5d84; }
+.edit-section-badge {
+  position: absolute; top: 10px; left: 10px; z-index: 45;
+  background: #6c5d84; color: #fff; font: 600 11px/1 system-ui, sans-serif;
+  letter-spacing: 0.04em; padding: 6px 9px; border-radius: 999px;
+  opacity: 0; transition: opacity 0.2s; pointer-events: none;
+}
+.edit-section:hover .edit-section-badge, .edit-section-selected .edit-section-badge { opacity: 1; }
