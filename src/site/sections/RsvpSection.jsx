@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import { T, useSection, useEdit, ImageButton } from '../editing.jsx';
-import { sortEventsByConfig, useEventOrder } from '../../lib/eventOrder.js';
+import { sortEventsByConfig, usePublicEventOrder } from '../../lib/sortEvents.js';
 
 // Guest-facing calls to the /api serverless functions (see /api/*.js).
 const postJson = async (url, body) => {
@@ -20,7 +20,7 @@ const postJson = async (url, body) => {
 export default function RsvpSection() {
   const { section } = useSection();
   const edit = useEdit();
-  const [eventOrder] = useEventOrder();
+  const eventOrder = usePublicEventOrder();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);

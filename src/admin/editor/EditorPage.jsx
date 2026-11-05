@@ -95,6 +95,7 @@ export function Editor({ auth, email, dryRun = false }) {
   const content = doc_.present;
   const [published, setPublished] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [remote, setRemote] = useState(null);         // someone else saved the draft: { by, content }
   const [saveState, setSaveState] = useState('saved'); // saved | saving | error
   const [selected, setSelected] = useState(null);       // null | 'site' | 'sections.N'
   const [device, setDevice] = useState('desktop');
@@ -131,9 +132,34 @@ export function Editor({ auth, email, dryRun = false }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- autosave draft (debounced)
+  // ---- watch for someone else (e.g. Sneha in another browser) saving the draft,
+  // so two people editing at once don't silently overwrite each other.
   useEffect(() => {
-    if (!content || same(content, lastSaved.current) || dryRun) return;
+    if (dryRun) return;
+    return onSnapshot(doc(db, ...DRAFT_DOC), (snap) => {
+      if (!snap.exists() || snap.metadata.hasPendingWrites) return;
+      const d = snap.data();
+      if (!d.updatedBy || d.updatedBy === email || !lastSaved.current) return;
+      const theirs = normalizeContent(d.content, DEFAULT_CONTENT);
+      if (same(theirs, lastSaved.current)) return;
+      setRemote({ by: d.updatedBy, content: theirs });
+    }, () => {});
+  }, [email, dryRun]);
+
+  const takeTheirs = () => {
+    lastSaved.current = remote.content;
+    applyChange(remote.content, 'remote');
+    setRemote(null);
+    setSaveState('saved');
+  };
+  const keepMine = () => {
+    lastSaved.current = remote.content; // forces the next autosave to write ours over theirs
+    setRemote(null);
+  };
+
+  // ---- autosave draft (debounced). Paused while a conflicting save is unresolved.
+  useEffect(() => {
+    if (!content || same(content, lastSaved.current) || dryRun || remote) return;
     setSaveState('saving');
     const t = setTimeout(async () => {
       try {
@@ -146,7 +172,7 @@ export function Editor({ auth, email, dryRun = false }) {
       }
     }, 800);
     return () => clearTimeout(t);
-  }, [content, email, dryRun]);
+  }, [content, email, dryRun, remote]);
 
   // Warn before closing with unsaved edits.
   useEffect(() => {
@@ -381,6 +407,16 @@ export function Editor({ auth, email, dryRun = false }) {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#ebe4d8] font-sans text-[#333036]">
+      {remote && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[250] w-[min(92vw,560px)] rounded-xl border border-[#e9d9a9] bg-[#fff8e6] shadow-xl p-4 text-sm text-[#333036]">
+          <p className="font-semibold">{remote.by} just saved changes to the draft.</p>
+          <p className="text-[#333036]/75 mt-1">Your edits are paused so nothing gets overwritten. Load their version (your unsaved edits are lost, but Undo can bring them back), or keep yours (their changes are replaced).</p>
+          <div className="flex gap-2 justify-end mt-3">
+            <button onClick={keepMine} className="rounded-md px-3 py-1.5 border border-[#333036]/20 bg-white hover:bg-[#333036]/5">Keep mine</button>
+            <button onClick={takeTheirs} className="rounded-md px-3 py-1.5 bg-[#6c5d84] text-white font-semibold hover:bg-[#524569]">Load their version</button>
+          </div>
+        </div>
+      )}
       {/* top bar */}
       <header className="flex items-center gap-2 px-3 md:px-4 h-14 border-b border-[#333036]/10 bg-white shrink-0">
         <a href="/admin" className="p-1.5 rounded hover:bg-[#333036]/5" title="Back to dashboard"><ArrowLeft className="w-4 h-4" /></a>

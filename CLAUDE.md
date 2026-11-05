@@ -43,5 +43,8 @@ npm run lint
 
 ## Conventions
 
+- The public site must not import `src/firebase.js` (the Firebase SDK is ~160 KB gzipped). It reads public docs with `readPublicDoc()` from `src/content/publicRead.js`; only admin/editor code uses the SDK.
+- Links from editable content go through `safeUrl()` (`src/lib/safeUrl.js`).
+
 - Never expose guest contact data to the public site; anything guest-facing goes through `/api`.
 - Work on a branch; Vercel builds a preview for every pushed branch. Merging to `main` deploys.

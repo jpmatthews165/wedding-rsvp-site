@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import CoverImage from '../CoverImage.jsx';
+import { safeUrl } from '../../lib/safeUrl.js';
 import { T, useShow, useSection, useEdit, ImageButton } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
@@ -179,8 +180,8 @@ export function TravelSection() {
                     <T f={itemPath('hotels', i, 'code')} as="p" className="font-subtitle text-lg tracking-normal text-brand" placeholder="Discount code" />
                   </div>
                 )}
-                {(h.url || edit) && (h.buttonText || edit) && (
-                  <a href={h.url || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 block w-full ${btnOutline}`}>
+                {(safeUrl(h.url) || edit) && (h.buttonText || edit) && (
+                  <a href={safeUrl(h.url) || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 block w-full ${btnOutline}`}>
                     <T f={itemPath('hotels', i, 'buttonText')} />
                   </a>
                 )}
@@ -260,7 +261,7 @@ export function CardsSection() {
             );
             return (
               <RevealOnScroll key={i} delay={(i % 3 + 1) * 100}>
-                {item.url && !edit ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="block h-full">{inner}</a> : inner}
+                {safeUrl(item.url) && !edit ? <a href={safeUrl(item.url)} target="_blank" rel="noopener noreferrer" className="block h-full">{inner}</a> : inner}
               </RevealOnScroll>
             );
           })}
@@ -321,9 +322,9 @@ export function TextSection() {
           <H2 />
           <div className={`h-px w-24 bg-brand/40 mb-10 ${hasImage ? 'mx-auto md:mx-0' : 'mx-auto'}`} />
           <T f="body" as="div" multiline className="font-details text-xl text-ink leading-relaxed" />
-          {(section.buttonText && section.buttonUrl) || edit ? (
+          {(section.buttonText && safeUrl(section.buttonUrl)) || edit ? (
             <div className="mt-10">
-              <a href={section.buttonUrl || '#'} target="_blank" rel="noopener noreferrer" className={`inline-block ${btnOutline}`}>
+              <a href={safeUrl(section.buttonUrl) || '#'} target="_blank" rel="noopener noreferrer" className={`inline-block ${btnOutline}`}>
                 <T f="buttonText" placeholder="Button text (optional)" />
               </a>
             </div>
@@ -386,9 +387,9 @@ export function RegistrySection() {
         <T f="text" as="p" multiline className="font-details text-ink text-xl leading-relaxed mb-12" />
         <div className="flex flex-col sm:flex-row flex-wrap gap-6 justify-center">
           {links.map((l, i) => (
-            <a key={i} href={l.url || '#'} target="_blank" rel="noopener noreferrer"
-              onClick={(e) => { if (!l.url) e.preventDefault(); }}
-              className={`${btnOutline} py-4 ${!l.url && !edit ? 'opacity-60 cursor-default' : ''}`}>
+            <a key={i} href={safeUrl(l.url) || '#'} target="_blank" rel="noopener noreferrer"
+              onClick={(e) => { if (!safeUrl(l.url)) e.preventDefault(); }}
+              className={`${btnOutline} py-4 ${!safeUrl(l.url) && !edit ? 'opacity-60 cursor-default' : ''}`}>
               <T f={itemPath('links', i, 'label')} />
             </a>
           ))}
