@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Paste these into Firebase console → Firestore Database → Rules → Publish.
+// Keep the admin email list in sync with src/adminConfig.js.
+//
+// - Guests never touch Firestore directly; their lookups and RSVPs go through
+//   the /api functions on Vercel (which use the Admin SDK and skip these rules).
+// - Only the admin Google accounts below can read or change guest data.
+// - Anyone may read /settings (event order, and later the editable site content).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'jpmatthews165@gmail.com',
+          'snehaandjosh2027@gmail.com'
+        ];
+    }
+
+    match /settings/{docId} {
+      allow read: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

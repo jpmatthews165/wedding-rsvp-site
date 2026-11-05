@@ -1,16 +1,39 @@
-# React + Vite
+# Josh & Sneha Wedding Site
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Live at https://wedding.joshandsneha2027.com · React + Vite + Tailwind · Firebase (Firestore + Auth) · hosted on Vercel.
 
-Currently, two official plugins are available:
+## How it fits together
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Part | Where | Who can use it |
+|---|---|---|
+| Public site | `src/App.jsx` | Everyone |
+| Guest RSVP lookup & answers | `api/lookup.js`, `api/household.js`, `api/rsvp.js` (Vercel serverless functions) | Guests — only see their own household, never contact info |
+| Admin dashboard | `/admin` | Google accounts listed in `src/adminConfig.js` **and** `firestore.rules` |
+| Database security | `firestore.rules` | Pasted into the Firebase console |
+| Parallax backgrounds | `src/components/ParallaxBackground.jsx` | — |
 
-## React Compiler
+The browser never reads the guest list directly. Guest lookups go through `/api/*`, which runs on Vercel with a Firebase service account.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## One-time setup (do these **in order**)
 
-## Expanding the Oxlint configuration
+Merging this code before steps 1–2 will break RSVPs on the live site, because the new code needs the service account.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. **Service account → Vercel**
+   - Firebase console → ⚙ Project settings → *Service accounts* → **Generate new private key** (downloads a JSON file. Keep it private and never commit it).
+   - Vercel → project → *Settings → Environment Variables* → add `FIREBASE_SERVICE_ACCOUNT` = the **entire JSON file contents**, for Production and Preview.
+2. **Google sign-in**
+   - Firebase console → *Authentication → Sign-in method* → enable **Google**.
+   - *Authentication → Settings → Authorized domains* → make sure `wedding.joshandsneha2027.com` is listed.
+   - Admin emails live in `src/adminConfig.js` **and** `firestore.rules`. Keep both lists the same when adding or removing someone.
+3. **Deploy**: merge to `main`. Vercel builds automatically.
+4. **Lock the database**: Firebase console → *Firestore → Rules* → paste `firestore.rules` → **Publish**.
+5. **Optional cleanup**: *Authentication → Sign-in method* → disable **Anonymous** (no longer used).
+
+## Local development
+
+```bash
+npm install
+npm run dev          # site only (RSVP lookup won't work — no /api)
+npx vercel dev       # site + /api functions (needs `vercel link` and the env var locally)
+npm run build && npm run lint
+```
