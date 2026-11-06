@@ -32,7 +32,12 @@ Merging this code before steps 1–2 will break RSVPs on the live site, because 
    - **Claude:** create an API key at https://platform.claude.com (Settings → API keys; add a few dollars of credit). In Vercel, add `ANTHROPIC_API_KEY` for Production and Preview. Each assistant request costs a few cents.
    - **Photo uploads:** Vercel → project → *Storage* → **Create** → **Blob** → connect it to this project. That adds `BLOB_READ_WRITE_TOKEN` automatically. The Hobby plan includes free storage.
    - Redeploy after adding them.
-6. **Optional cleanup**: *Authentication → Sign-in method* → disable **Anonymous** (no longer used).
+6. **Design changes from the editor** (Claude edits the site's design via GitHub; see CLAUDE.md)
+   - **GitHub → repo → Settings → Secrets and variables → Actions → New repository secret:** `ANTHROPIC_API_KEY` (a Claude API key; each request is capped at $4).
+   - **GitHub → Settings → Developer settings → Fine-grained tokens → Generate:** repository access *only* `wedding-rsvp-site`; permissions **Actions, Contents, Pull requests: Read and write**; **Checks, Commit statuses, Deployments: Read**. Add it in Vercel as `GITHUB_DESIGN_TOKEN` (Production + Preview).
+   - **Vercel → Settings → Deployment Protection → Protection Bypass for Automation → enable**, so preview links open without a Vercel login.
+   - Redeploy.
+7. **Optional cleanup**: *Authentication → Sign-in method* → disable **Anonymous** (no longer used).
 
 ## Editing the website
 

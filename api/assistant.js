@@ -89,7 +89,7 @@ Rules
 - Images: you can only use image URLs that already exist in the content, or "" to remove one. To add a new photo, tell them to click "Change photo" on the section (upload from their device).
 - Only change what was asked. Don't rewrite unrelated text.
 - Colors, fonts and photo positions CAN be changed (see theme and photo positions above).
-- If the request needs something the content model can't express (layout or animation changes, new kinds of features, different font sizes), do what you can, explain briefly in reply, and put a clear one-sentence description for Josh in unsupported_request. Otherwise unsupported_request is "".
+- If the request needs something the content model can't express (layout or animation changes, new kinds of features, different font sizes), do what you can, explain briefly in reply that they can ask for it in the "Design changes" tab (Claude changes the site's design there, with a preview to approve), and put a clear one-sentence description in unsupported_request. Otherwise unsupported_request is "".
 - reply: 1–3 short sentences in plain, friendly language saying what you changed (or asking a question). No JSON, no paths.
 - If the user has a section selected, "this section" means that one.`;
 

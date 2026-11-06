@@ -17,6 +17,7 @@ import ImagePicker from './ImagePicker.jsx';
 import ImageAdjust from './ImageAdjust.jsx';
 import ThemePanel from './ThemePanel.jsx';
 import AssistantPanel from './AssistantPanel.jsx';
+import DesignPanel, { ClaudeTabs } from './DesignPanel.jsx';
 
 const DEVICES = {
   desktop: { width: '100%', icon: Monitor, label: 'Desktop' },
@@ -392,7 +393,7 @@ export function Editor({ auth, email, dryRun = false }) {
     </div>
   );
 
-  const assistant = (
+  const quickEdits = (
     <AssistantPanel
       content={content}
       getContent={getPresent}
@@ -404,6 +405,8 @@ export function Editor({ auth, email, dryRun = false }) {
       onFocusPath={focusPath}
     />
   );
+  const assistant = <ClaudeTabs quick={quickEdits} design={<DesignPanel getToken={auth.getToken} />} />;
+
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#ebe4d8] font-sans text-[#333036]">

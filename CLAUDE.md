@@ -16,6 +16,7 @@ React 19 + Vite + Tailwind 3, Firebase (Firestore + Google Auth), Vercel (hostin
   - `lookup.js`, `household.js` and `rsvp.js`: guest RSVP. Guests never read Firestore directly.
   - `assistant.js`: the "Ask Claude" companion (Anthropic SDK, `claude-opus-5-5`). It returns edit *operations* (`set`/`insert`/`remove`/`move` on dotted paths) that the editor applies to the draft.
   - `upload.js`: Vercel Blob upload tokens for editor photos.
+  - `design.js`: "Design changes" from the editor: starts the GitHub workflow, reports status/preview, approves (merges) or discards. Requests are stored in Firestore `designRequests`.
   - Admin endpoints verify the Firebase ID token and the email list in `src/adminConfig.js`.
 - **Security**: `firestore.rules` (paste into the Firebase console). Admin emails must match in `src/adminConfig.js` **and** `firestore.rules`.
 
@@ -48,3 +49,10 @@ npm run lint
 
 - Never expose guest contact data to the public site; anything guest-facing goes through `/api`.
 - Work on a branch; Vercel builds a preview for every pushed branch. Merging to `main` deploys.
+
+## Design changes from the editor (Claude Code on GitHub)
+
+The editor's **Ask Claude → Design changes** tab lets an admin request a *visual* code change. `api/design.js` starts `.github/workflows/design-change.yml`, which runs Claude Code headless with edit permission only for the guest site's visual files, then `.github/design/guard.mjs` rejects the change if anything else changed (allowlist and forbidden patterns live in `.github/design/scope.mjs`), then the site must build, then it's pushed to a `design/<id>` branch. Vercel builds a preview; the change only reaches `main` when someone clicks **Approve & publish**.
+
+- Behaviour stays out of the visual files on purpose: e.g. the RSVP logic is in `src/site/sections/useRsvp.js` (protected) and `RsvpSection.jsx` is only its look. Keep that split when adding features.
+- If you change which files are "visual", update `scope.mjs` **and** the `--allowedTools`/`--disallowedTools` lists in the workflow.

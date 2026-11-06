@@ -1,0 +1,141 @@
+# Design changes requested from the website editor ("Design changes" tab).
+# Started only by /api/design (needs the GITHUB_DESIGN_TOKEN in Vercel) or by a
+# repo collaborator. Claude Code may edit ONLY the guest site's visual files;
+# .github/design/guard.mjs enforces that before anything is committed.
+# Nothing here touches main: the result is pushed to its own design/* branch,
+# Vercel builds a preview, and it only goes live when approved in the editor.
+name: Design change (Claude)
+run-name: design ${{ inputs.request_id }} #${{ inputs.attempt }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_id: { description: 'Request id', required: true, type: string }
+      attempt: { description: 'Attempt number', required: true, type: string }
+      request: { description: 'What to change (plain language)', required: true, type: string }
+      requested_by: { description: 'Who asked', required: true, type: string }
+      branch: { description: 'design/* branch', required: true, type: string }
+      follow_up: { description: '"true" to continue an existing branch', required: false, type: string, default: 'false' }
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ inputs.branch }}
+  cancel-in-progress: false
+
+jobs:
+  change:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Inputs are only ever read through env vars (never ${{ }} in scripts) so
+      # request text can't inject shell commands.
+      REQUEST: ${{ inputs.request }}
+      REQUEST_ID: ${{ inputs.request_id }}
+      REQUESTED_BY: ${{ inputs.requested_by }}
+      BRANCH: ${{ inputs.branch }}
+      FOLLOW_UP: ${{ inputs.follow_up }}
+    steps:
+      - name: Check inputs
+        run: |
+          [[ "$BRANCH" =~ ^design/[a-z0-9-]{4,48}$ ]] || { echo "::error title=Design change::Invalid branch name."; exit 1; }
+          [[ "$REQUEST_ID" =~ ^[a-z0-9-]{4,40}$ ]] || { echo "::error title=Design change::Invalid request id."; exit 1; }
+          [ ${#REQUEST} -le 4000 ] || { echo "::error title=Design change::Request is too long."; exit 1; }
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Use the request's branch
+        run: |
+          if [ "$FOLLOW_UP" = "true" ] && git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null; then
+            git fetch origin "$BRANCH" && git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -B "$BRANCH"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Ask Claude Code for the change
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          {
+            if [ "$FOLLOW_UP" = "true" ]; then
+              echo "This is a follow-up on an earlier design change on this branch. Adjust the existing change as asked:"
+            else
+              echo "Design change requested by $REQUESTED_BY:"
+            fi
+            echo
+            echo "<request>"
+            printf '%s\n' "$REQUEST"
+            echo "</request>"
+          } > "$RUNNER_TEMP/request.txt"
+
+          npx -y @anthropic-ai/claude-code@2.1.307 -p "$(cat "$RUNNER_TEMP/request.txt")" \
+            --append-system-prompt "$(cat .github/design/prompt.md)" \
+            --model opus \
+            --permission-mode dontAsk \
+            --tools "Read,Glob,Grep,Edit,Write" \
+            --allowedTools "Read" "Glob" "Grep" \
+              "Edit(src/site/*.jsx)" "Edit(src/site/sections/*.jsx)" "Edit(src/components/*.jsx)" \
+              "Edit(src/index.css)" "Edit(tailwind.config.js)" \
+              "Edit(src/content/schema.js)" "Edit(src/content/defaultContent.js)" "Edit(src/content/theme.js)" \
+            --disallowedTools "Bash" "WebFetch" "WebSearch" \
+              "Edit(src/site/editing.jsx)" "Edit(src/site/PreviewFrame.jsx)" "Edit(src/site/PublicSite.jsx)" \
+              "Edit(src/site/sections/useRsvp.js)" "Edit(api/**)" "Edit(src/admin/**)" "Edit(.github/**)" \
+            --max-budget-usd 4 \
+            --no-session-persistence \
+            --output-format json > "$RUNNER_TEMP/claude.json" || true
+
+          node -e '
+            const fs = require("fs");
+            let r = {};
+            try { r = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + "/claude.json", "utf8")); } catch {}
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/summary.txt", String(r.result || "").trim());
+          '
+          echo "Claude said:"; cat "$RUNNER_TEMP/summary.txt"
+
+      - name: Stop if Claude declined or changed nothing
+        run: |
+          SUMMARY="$(cat "$RUNNER_TEMP/summary.txt")"
+          ONE_LINE="$(printf '%s' "$SUMMARY" | tr '\r\n' '  ' | cut -c1-600)"
+          git add -A
+          if git diff --cached --quiet; then
+            case "$SUMMARY" in
+              OUT_OF_SCOPE:*|CONTENT_ONLY:*) echo "::error title=Design change declined::${ONE_LINE}" ;;
+              "") echo "::error title=Design change failed::Claude didn't finish (it may have hit its time or cost limit). Try a simpler request." ;;
+              *) echo "::error title=Design change failed::No changes were made. ${ONE_LINE}" ;;
+            esac
+            exit 1
+          fi
+
+      - name: Scope guard
+        run: node .github/design/guard.mjs origin/main
+
+      - name: Build
+        run: |
+          npm run build || { echo "::error title=Design change failed::The change didn't build, so it was not published. Try rephrasing the request."; exit 1; }
+
+      - name: Commit and push to the request's branch
+        run: |
+          # Authored as the repo owner (as in the existing history) so Vercel builds
+          # the preview; Claude is credited as co-author.
+          git config user.name "Josh Matthews"
+          git config user.email "jpmatthews165@gmail.com"
+          {
+            printf 'Design: %s\n\n' "$(printf '%s' "$REQUEST" | head -c 60 | tr '\r\n' '  ')"
+            printf 'Requested by %s from the website editor (%s).\n\n' "$REQUESTED_BY" "$REQUEST_ID"
+            cat "$RUNNER_TEMP/summary.txt"
+            printf '\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n'
+          } > "$RUNNER_TEMP/message.txt"
+          git commit -q -F "$RUNNER_TEMP/message.txt"
+          git push -f origin "HEAD:refs/heads/$BRANCH"
+          echo "::notice title=Design change ready::$(cat "$RUNNER_TEMP/summary.txt" | tr '\r\n' '  ' | cut -c1-600)"

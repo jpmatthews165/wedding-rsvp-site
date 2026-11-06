@@ -1,88 +1,18 @@
-import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import { T, useSection, useEdit, ImageButton } from '../editing.jsx';
-import { sortEventsByConfig, usePublicEventOrder } from '../../lib/sortEvents.js';
+import useRsvp from './useRsvp.js';
 
-// Guest-facing calls to the /api serverless functions (see /api/*.js).
-const postJson = async (url, body) => {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-  return data;
-};
-
+// How the RSVP section looks. All behaviour (search, saving answers) lives in
+// useRsvp.js, which is protected; this file is safe to restyle.
 export default function RsvpSection() {
   const { section } = useSection();
   const edit = useEdit();
-  const eventOrder = usePublicEventOrder();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchError, setSearchError] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [household, setHousehold] = useState(null);
-  const [rsvpError, setRsvpError] = useState('');
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (edit) return;
-    setSearchError('');
-    setSearchResults([]);
-    const name = searchTerm.trim();
-    if (name.split(/\s+/).length < 2) {
-      setSearchError('Please enter your full first and last name.');
-      return;
-    }
-    setIsSearching(true);
-    try {
-      const { matches } = await postJson('/api/lookup', { name });
-      if (!matches?.length) setSearchError("We couldn't find a match. Please check spelling and try again.");
-      else setSearchResults(matches.map((m) => ({ ...m, searchedName: name })));
-    } catch (err) {
-      setSearchError(err.message);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const openHousehold = async (match) => {
-    setSearchError('');
-    setRsvpError('');
-    setIsSearching(true);
-    try {
-      const data = await postJson('/api/household', { name: match.searchedName, guestId: match.guestId });
-      setHousehold({ name: data.household, members: data.members, searcherName: match.searchedName, searcherId: match.guestId });
-      setSearchTerm('');
-      setSearchResults([]);
-    } catch (err) {
-      setSearchError(err.message);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const setLocal = (memberId, event, answer) => setHousehold((prev) => prev && ({
-    ...prev,
-    members: prev.members.map((m) => (m.id === memberId ? { ...m, rsvps: { ...(m.rsvps || {}), [event]: answer } } : m)),
-  }));
-
-  const handleRsvp = async (memberId, event, answer) => {
-    const previous = household?.members.find((m) => m.id === memberId)?.rsvps?.[event];
-    setRsvpError('');
-    setLocal(memberId, event, answer);
-    try {
-      await postJson('/api/rsvp', { name: household.searcherName, guestId: household.searcherId, memberId, event, answer });
-    } catch (err) {
-      setLocal(memberId, event, previous);
-      setRsvpError(err.message);
-    }
-  };
+  const {
+    searchTerm, setSearchTerm, search: handleSearch, isSearching, searchError, searchResults,
+    openHousehold, household, closeHousehold, answer: handleRsvp, rsvpError, eventsFor,
+  } = useRsvp({ disabled: !!edit });
 
   return (
     <>
@@ -104,7 +34,7 @@ export default function RsvpSection() {
                 placeholder={section.placeholder}
                 value={searchTerm}
                 readOnly={!!edit}
-                onChange={(e) => { setSearchTerm(e.target.value); setSearchError(''); }}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-28 py-4 bg-transparent outline-none text-lg md:text-xl text-ink placeholder:text-ink/50 font-subtitle tracking-wide"
               />
               <button type="submit" disabled={isSearching} className="absolute right-0 font-subtitle text-xs tracking-[0.15em] uppercase text-ink hover:text-brand transition-colors pr-2 disabled:opacity-50">
@@ -134,7 +64,7 @@ export default function RsvpSection() {
       {household && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 z-[100]">
           <div className="bg-paper p-8 md:p-16 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative border border-ink/10">
-            <button onClick={() => setHousehold(null)} aria-label="Close" className="absolute top-8 right-8 text-brand hover:text-ink transition-colors">
+            <button onClick={() => closeHousehold()} aria-label="Close" className="absolute top-8 right-8 text-brand hover:text-ink transition-colors">
               <X className="w-8 h-8 stroke-[1]" />
             </button>
             <div className="text-center mb-12">
@@ -146,7 +76,7 @@ export default function RsvpSection() {
                 <div key={member.id} className="border-b border-ink/10 pb-8 last:border-0 last:pb-0">
                   <h3 className="font-subtitle text-2xl tracking-normal text-brand mb-8">{member.name}</h3>
                   <div className="space-y-6 md:pl-4">
-                    {sortEventsByConfig(member.events || [], eventOrder).map((event) => (
+                    {eventsFor(member).map((event) => (
                       <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <span className="font-subtitle text-ink tracking-[0.1em] uppercase text-sm">{event}</span>
                         <div className="flex gap-4">
@@ -164,7 +94,7 @@ export default function RsvpSection() {
               <p role="alert" className="font-subtitle text-ink text-xs mt-10 tracking-normal bg-accent/30 py-3 px-4 rounded border border-accent/50 uppercase text-center">{rsvpError}</p>
             )}
             <div className="mt-16 text-center">
-              <button onClick={() => setHousehold(null)} className="font-subtitle bg-brand text-paper px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-brand-dark transition-colors shadow-lg">
+              <button onClick={() => closeHousehold()} className="font-subtitle bg-brand text-paper px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-brand-dark transition-colors shadow-lg">
                 {section.completeButtonText || 'Complete RSVP'}
               </button>
             </div>
