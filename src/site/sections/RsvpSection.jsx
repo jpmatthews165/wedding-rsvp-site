@@ -80,8 +80,8 @@ export default function RsvpSection() {
                       <div key={event} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <span className="font-subtitle text-ink tracking-[0.1em] uppercase text-sm">{event}</span>
                         <div className="flex gap-4">
-                          <button onClick={() => handleRsvp(member.id, event, 'yes')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-brand text-paper border-brand' : 'border-ink/30 text-ink hover:border-brand'}`}>Accept</button>
-                          <button onClick={() => handleRsvp(member.id, event, 'no')} className={`font-subtitle px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-accent text-ink border-accent' : 'border-ink/30 text-ink hover:border-accent'}`}>Decline</button>
+                          <button onClick={() => handleRsvp(member.id, event, 'yes')} className={`font-subtitle rounded-full px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'yes' ? 'bg-brand text-paper border-brand' : 'border-ink/30 text-ink hover:border-brand'}`}>Accept</button>
+                          <button onClick={() => handleRsvp(member.id, event, 'no')} className={`font-subtitle rounded-full px-8 py-3 border text-xs tracking-[0.15em] uppercase transition-all duration-300 ${member.rsvps?.[event] === 'no' ? 'bg-accent text-ink border-accent' : 'border-ink/30 text-ink hover:border-accent'}`}>Decline</button>
                         </div>
                       </div>
                     ))}
@@ -94,7 +94,7 @@ export default function RsvpSection() {
               <p role="alert" className="font-subtitle text-ink text-xs mt-10 tracking-normal bg-accent/30 py-3 px-4 rounded border border-accent/50 uppercase text-center">{rsvpError}</p>
             )}
             <div className="mt-16 text-center">
-              <button onClick={() => closeHousehold()} className="font-subtitle bg-brand text-paper px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-brand-dark transition-colors shadow-lg">
+              <button onClick={() => closeHousehold()} className="font-subtitle rounded-full bg-brand text-paper px-12 py-4 tracking-[0.15em] uppercase text-xs hover:bg-brand-dark transition-colors shadow-lg">
                 {section.completeButtonText || 'Complete RSVP'}
               </button>
             </div>

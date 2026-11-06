@@ -6,8 +6,8 @@ import { safeUrl } from '../../lib/safeUrl.js';
 import { T, useShow, useSection, useEdit, ImageButton } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
-const btnOutline = 'font-subtitle border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
-const btnSolid = 'font-subtitle border border-brand bg-brand text-paper px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand-dark hover:border-brand-dark transition-colors shadow-sm';
+const btnOutline = 'font-subtitle rounded-full border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
+const btnSolid = 'font-subtitle rounded-full border border-brand bg-brand text-paper px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand-dark hover:border-brand-dark transition-colors shadow-sm';
 const Divider = ({ center = true }) => <div className={`h-px w-24 bg-brand/40 ${center ? 'mx-auto' : 'mx-auto md:mx-0'}`} />;
 const H2 = ({ f = 'title', className = '' }) => (
   <T f={f} as="h2" className={`font-title text-5xl md:text-7xl text-brand mb-6 ${className}`} placeholder="Heading" />
@@ -44,7 +44,7 @@ export function HeroSection() {
       {useShow('buttonText') && (
         <div className="absolute bottom-12 w-full text-center z-20">
           <RevealOnScroll loadImmediately delay={300}>
-            <button onClick={() => scrollToSection('rsvp')} className="font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
+            <button onClick={() => scrollToSection('rsvp')} className="font-subtitle rounded-full border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
               <T f="buttonText" />
             </button>
           </RevealOnScroll>
@@ -105,7 +105,7 @@ export function DetailsSection({ site }) {
           </RevealOnScroll>
           <RevealOnScroll delay={300} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             {section.showCalendarButton && (
-              <button onClick={handleAddToCalendar} className="font-subtitle border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
+              <button onClick={handleAddToCalendar} className="font-subtitle rounded-full border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
                 <T f="calendarButtonText" />
               </button>
             )}
@@ -129,7 +129,7 @@ export function DetailsSection({ site }) {
           )}
         </div>
         {(section.image || edit) && (
-          <RevealOnScroll delay={200}>
+          <RevealOnScroll delay={200} className="md:order-first">
             <div className="relative h-[80vh] w-full bg-paper2 overflow-hidden rounded-sm z-10 shadow-lg border border-accent2/40">
               <CoverImage src={section.image} pos={section.imagePos} />
               <ImageButton f="image" className="top-4 right-4" />
