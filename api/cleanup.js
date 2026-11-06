@@ -148,9 +148,11 @@ export default async function handler(req, res) {
 
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await client.beta.messages.create({
+      // Streamed: the SDK refuses long non-streaming requests. Each attempt is capped
+      // so two attempts fit in the function's 180 s.
+      const response = await client.beta.messages.stream({
         model: MODEL,
-        max_tokens: 32000,
+        max_tokens: 16000,
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
         output_config: { effort: 'medium' },
@@ -158,7 +160,7 @@ export default async function handler(req, res) {
         tools: [TOOL],
         tool_choice: { type: 'tool', name: 'clean_up' },
         messages,
-      });
+      }, { timeout: 80000, maxRetries: 0 }).finalMessage();
       if (response.stop_reason === 'refusal') return res.status(200).json({ summary: "Sorry, I couldn't clean that up.", changes: [], operations: [] });
       const toolUse = response.content.find((b) => b.type === 'tool_use' && b.name === 'clean_up');
       if (!toolUse) return res.status(502).json({ error: 'Claude did not return a clean-up. Please try again.' });
@@ -182,8 +184,9 @@ export default async function handler(req, res) {
   } catch (err) {
     console.error('cleanup failed', err);
     if (err instanceof Anthropic.RateLimitError) return res.status(429).json({ error: 'Claude is busy right now. Try again in a minute.' });
+    if (err instanceof Anthropic.APIConnectionTimeoutError) return res.status(504).json({ error: 'Claude took too long. Try cleaning up fewer sections at once.' });
     if (err instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: 'The Anthropic API key in Vercel is invalid.' });
     if (err instanceof Anthropic.APIError) return res.status(502).json({ error: `Claude had a problem (${err.status}). Please try again.` });
-    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    return res.status(500).json({ error: `Something went wrong (${String(err?.message || err).slice(0, 160)}). Please try again.` });
   }
 }
