@@ -158,12 +158,20 @@ export default async function handler(req, res) {
         output_config: { effort: 'medium' },
         system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
         tools: [TOOL],
-        tool_choice: { type: 'tool', name: 'clean_up' },
+        // Not forced: forcing a tool isn't allowed while Claude is thinking.
+        tool_choice: { type: 'auto' },
         messages,
       }, { timeout: 80000, maxRetries: 0 }).finalMessage();
       if (response.stop_reason === 'refusal') return res.status(200).json({ summary: "Sorry, I couldn't clean that up.", changes: [], operations: [] });
       const toolUse = response.content.find((b) => b.type === 'tool_use' && b.name === 'clean_up');
-      if (!toolUse) return res.status(502).json({ error: 'Claude did not return a clean-up. Please try again.' });
+      if (!toolUse) {
+        if (attempt === 1) return res.status(502).json({ error: 'Claude did not return a clean-up. Please try again.' });
+        messages.push(
+          { role: 'assistant', content: response.content },
+          { role: 'user', content: 'Please return the clean-up by calling the clean_up tool now.' },
+        );
+        continue;
+      }
       const input = toolUse.input || {};
       const operations = Array.isArray(input.operations) ? input.operations : [];
       try {
@@ -186,7 +194,7 @@ export default async function handler(req, res) {
     if (err instanceof Anthropic.RateLimitError) return res.status(429).json({ error: 'Claude is busy right now. Try again in a minute.' });
     if (err instanceof Anthropic.APIConnectionTimeoutError) return res.status(504).json({ error: 'Claude took too long. Try cleaning up fewer sections at once.' });
     if (err instanceof Anthropic.AuthenticationError) return res.status(500).json({ error: 'The Anthropic API key in Vercel is invalid.' });
-    if (err instanceof Anthropic.APIError) return res.status(502).json({ error: `Claude had a problem (${err.status}). Please try again.` });
+    if (err instanceof Anthropic.APIError) return res.status(502).json({ error: `Claude had a problem (${err.status}: ${String(err.error?.error?.message || err.message || '').slice(0, 200)}). Please try again.` });
     return res.status(500).json({ error: `Something went wrong (${String(err?.message || err).slice(0, 160)}). Please try again.` });
   }
 }
