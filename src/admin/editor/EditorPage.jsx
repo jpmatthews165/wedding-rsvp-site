@@ -409,7 +409,7 @@ export function Editor({ auth, email, dryRun = false }) {
           device={device} onPickImage={setPicker} onAdjustImage={setAdjusting}
         />
       ) : (
-        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several. Click empty space in a section for its background.</p>
+        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click anything in the preview to format it, link it or drag it into place (click again to pick something inside a block). Drag over empty space or Shift+click to select several. Click empty space for the section background.</p>
       )}
       <div className="flex-1 min-h-0 flex justify-center px-2 pb-2">
         <iframe

@@ -147,7 +147,7 @@ function FillControls({ targets, roundable, st, themeColors, setOn }) {
 
 // Where a button goes: a section on this page (stored as "#<section id>") or a web
 // address. link = { path, fallback } from the preview (data-link on the button).
-function LinkMenu({ link, content, setMany }) {
+function LinkMenu({ link, content, setMany, what = 'button' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const saved = getAt(content, link.path);
@@ -163,17 +163,19 @@ function LinkMenu({ link, content, setMany }) {
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
   const save = (v) => setMany([{ path: link.path, value: v }]);
+  // Links kept in section.linkTo are removed; a type's own link field is emptied.
+  const remove = () => save(link.path.includes('.linkTo.') ? undefined : '');
   const saveUrl = () => { const u = safeUrl(url); if (u && !u.startsWith('#')) save(u); };
-  const shown = target ? `→ ${target.label}` : value.startsWith('#') ? '→ (missing section)' : value ? value.replace(/^https?:\/\/(www\.)?/, '').slice(0, 22) : 'No link';
+  const shown = target ? `Link: ${target.label}` : value.startsWith('#') ? 'Link: missing section' : value ? `Link: ${value.replace(/^https?:\/\/(www\.)?/, '').slice(0, 22)}` : 'Add link';
   return (
     <div className="relative" ref={ref}>
-      <button type="button" title="Where this button goes" onClick={() => setOpen(!open)}
-        className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8 max-w-[12rem]">
+      <button type="button" title={`Where this ${what} goes when clicked`} onClick={() => setOpen(!open)}
+        className={`h-8 px-2 inline-flex items-center gap-1.5 rounded-md border text-xs max-w-[13rem] ${value ? 'border-[#6c5d84]/40 bg-[#6c5d84]/8 text-[#6c5d84] font-semibold' : 'border-[#333036]/15 text-[#333036] hover:bg-[#333036]/8'}`}>
         <Link2 className="w-4 h-4 shrink-0" /><span className="truncate">{shown}</span>
       </button>
       {open && (
         <div className="absolute z-50 top-10 left-0 w-72 rounded-xl border border-[#333036]/12 bg-white shadow-xl p-3 space-y-3 text-xs text-[#333036]">
-          <p className="font-semibold text-[#333036]/70">Link this button to…</p>
+          <p className="font-semibold text-[#333036]/70">When someone clicks this {what}, go to…</p>
           <label className="flex items-center gap-2"><input type="radio" checked={mode === 'section'} onChange={() => setMode('section')} className="accent-[#6c5d84]" /> A section on this page</label>
           {mode === 'section' && (
             <select value={target?.id || ''} onChange={(e) => e.target.value && save(`#${e.target.value}`)}
@@ -193,9 +195,9 @@ function LinkMenu({ link, content, setMany }) {
           <div className="flex justify-between pt-1 border-t border-[#333036]/10">
             {link.fallback
               ? <button type="button" onClick={() => save(undefined)} className="text-[#6c5d84] hover:underline">Back to the default ({sections.find((s) => `#${s.id}` === link.fallback)?.label || link.fallback})</button>
-              : <button type="button" onClick={() => save('')} className="text-[#6c5d84] hover:underline">Remove link</button>}
+              : value ? <button type="button" onClick={remove} className="text-[#a3401f] hover:underline">Remove link</button> : <span className="text-[#333036]/50">No link yet</span>}
           </div>
-          <p className="text-[10px] text-[#333036]/50">Buttons don't respond to clicks while editing; on the site they go here.</p>
+          <p className="text-[10px] text-[#333036]/50">Links don't respond to clicks while editing; on the live site they go here.</p>
         </div>
       )}
     </div>
@@ -290,6 +292,11 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
     const x = cleanStyle(getAt(content, i.stylePath));
     return { path: i.stylePath, value: { ...x, x: undefined, y: undefined, mx: undefined, my: undefined } };
   }));
+  // Link: buttons report theirs from the preview (own link field or default);
+  // anything else (text, photo, box, block) can link via section.linkTo.
+  const linkInfo = !single ? null
+    : named.kind === 'button' ? selection[selection.length - 1]?.link || null
+      : { path: `${named.base}.linkTo.${styleKey(named.f)}`, fallback: '' };
   const pretty = (f) => f.replace(/\.(\d+)\./, ' $1 · ').replace(/([A-Z])/g, ' $1').toLowerCase();
   const label = items.length > 1
     ? `${items.length} selected`
@@ -299,6 +306,13 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
     <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
       <span className="text-[11px] font-semibold text-[#333036]/60 px-1 max-w-[9rem] truncate first-letter:uppercase" title={label}>{label}</span>
       <Sep />
+      {linkInfo && (
+        <>
+          <LinkMenu key={named.path} link={linkInfo} content={content} setMany={setMany}
+            what={{ button: 'button', text: 'text', image: 'photo', box: 'box', group: 'block', line: 'line', map: 'map' }[named.kind] || 'item'} />
+          <Sep />
+        </>
+      )}
       {isText && (
         <>
           <FontPicker font={st.font} ff={st.ff} theme={content.theme}
@@ -321,12 +335,6 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
         <Btn key={mode} title={single ? singleTitle : title} onClick={() => onAlign(mode)}><Icon className="w-4 h-4" /></Btn>
       ))}
       <Sep />
-      {single && items[0].kind === 'button' && selection[selection.length - 1]?.link && (
-        <>
-          <LinkMenu key={items[0].path} link={selection[selection.length - 1].link} content={content} setMany={setMany} />
-          <Sep />
-        </>
-      )}
       {parent && (
         <>
           <Btn title={`Select the ${parent.kind === 'button' ? 'button' : parent.kind === 'box' ? 'box' : 'item'} around this text`} onClick={() => onSelectItems([parent])}>

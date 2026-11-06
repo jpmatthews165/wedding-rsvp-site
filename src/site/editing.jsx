@@ -103,6 +103,8 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
     : { ...boxProps, 'data-tbox': isTextBox(st) ? '' : undefined };
   const ref = useRef(null);
   const blockFocus = useRef(false);
+  const link = useLink(f);
+  const linked = !locked && !!link.href;
 
   // Keep the editable DOM in sync with outside changes (undo, AI edits, side panel)
   // without fighting the cursor while the person is typing.
@@ -115,7 +117,9 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
     if (!hasText(value)) return null;
     return (
       <Tag className={`${className} whitespace-pre-line`} {...box}>
-        <span style={textCss(st)}>{value}</span>
+        {linked
+          ? <a {...anchorProps(link)} className="hover:underline underline-offset-4 decoration-1"><span style={textCss(st)}>{value}</span></a>
+          : <span style={textCss(st)}>{value}</span>}
       </Tag>
     );
   }
@@ -133,6 +137,7 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
     <Tag
       className={`${className} whitespace-pre-line`}
       {...box}
+      data-linked={linked ? '' : undefined}
       // First click selects the block it's in (see pickInChain); Shift+click adds to
       // the selection; otherwise the click edits the text.
       onPointerDown={(e) => {
@@ -187,11 +192,21 @@ export function Movable({ f, kind = 'image', as: Tag = 'div', className = '', st
   const { base } = useSection();
   const st = useFieldStyle(f);
   const box = useBoxProps(f, kind, style);
+  // Photos, boxes and groups can link somewhere too (buttons use <LinkButton>).
+  const link = useLink(f);
+  const linked = kind !== 'button' && !!link.href && !rest.href;
+  const linkHandlers = linked && !edit ? {
+    role: 'link', tabIndex: 0,
+    onClick: (e) => { rest.onClick?.(e); if (!e.defaultPrevented) followLink(link); },
+    onKeyDown: (e) => { if (e.key === 'Enter') followLink(link); },
+  } : {};
   return (
     <Tag
-      className={className}
+      className={`${className}${linked && !edit ? ' cursor-pointer' : ''}`}
       {...rest}
+      {...linkHandlers}
       {...box}
+      data-linked={linked && edit ? '' : undefined}
       data-tbox={kind === 'group' && isTextBox(st) ? '' : undefined}
       onPointerDown={edit ? (e) => {
         // The editor's own photo buttons aren't for this box.
@@ -233,6 +248,15 @@ export const useLink = (f, field, fallback = '') => {
     linkProps: edit ? { 'data-link': `${base}.${path}`, 'data-link-default': fallback || undefined } : {},
   };
 };
+
+// Going to a link: a section on this page scrolls there; anything else opens a new tab.
+const followLink = ({ href, internal }) => {
+  if (internal) document.getElementById(href.slice(1))?.scrollIntoView({ behavior: 'smooth' });
+  else window.open(href, '_blank', 'noopener,noreferrer');
+};
+const anchorProps = (link) => (link.internal
+  ? { href: link.href, onClick: (e) => { e.preventDefault(); followLink(link); } }
+  : { href: link.href, target: '_blank', rel: 'noopener noreferrer' });
 
 // True if the field has text, or we're in the editor (so empty fields can still be filled in).
 export const useShow = (f) => {
