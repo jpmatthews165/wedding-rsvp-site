@@ -16,6 +16,7 @@ import { Fields } from './FieldForm.jsx';
 import ImagePicker from './ImagePicker.jsx';
 import ImageAdjust from './ImageAdjust.jsx';
 import ThemePanel from './ThemePanel.jsx';
+import FormatBar from './FormatBar.jsx';
 import AssistantPanel from './AssistantPanel.jsx';
 import DesignPanel, { ClaudeTabs } from './DesignPanel.jsx';
 
@@ -102,6 +103,8 @@ export function Editor({ auth, email, dryRun = false }) {
   const [device, setDevice] = useState('desktop');
   const [picker, setPicker] = useState(null);           // path of image field being changed
   const [adjusting, setAdjusting] = useState(null);     // path of image field being repositioned
+  const [selectedEl, setSelectedEl] = useState(null);   // { path, kind } picked in the preview for formatting/moving
+  const [grid, setGrid] = useState({ step: 8, show: false });
   const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -193,6 +196,13 @@ export function Editor({ auth, email, dryRun = false }) {
   }, []);
   useEffect(() => { if (frameReady.current && content) post({ type: 'content', content }); }, [content, post]);
   useEffect(() => { if (frameReady.current) post({ type: 'selected', selected }); }, [selected, post]);
+  useEffect(() => { if (frameReady.current) post({ type: 'selectedEl', path: selectedEl?.path || null }); }, [selectedEl, post]);
+  useEffect(() => { if (frameReady.current) post({ type: 'grid', grid }); }, [grid, post]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && selectedEl && !e.target.isContentEditable) setSelectedEl(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedEl]);
 
   const focusPath = useCallback((base) => {
     setSelected(base);
@@ -207,15 +217,18 @@ export function Editor({ auth, email, dryRun = false }) {
         frameReady.current = true;
         post({ type: 'content', content: getPresent() });
         post({ type: 'selected', selected });
+        post({ type: 'selectedEl', path: selectedEl?.path || null });
+        post({ type: 'grid', grid });
       }
       if (m.type === 'edit') setField(m.path, m.value);
       if (m.type === 'select') setSelected(m.base);
       if (m.type === 'pickImage') setPicker(m.path);
       if (m.type === 'adjustImage') setAdjusting(m.path);
+      if (m.type === 'selectEl') setSelectedEl({ path: m.path, kind: m.kind });
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [post, setField, selected, getPresent]);
+  }, [post, setField, selected, selectedEl, grid, getPresent]);
 
   // ---- keyboard shortcuts
   useEffect(() => {
@@ -381,6 +394,11 @@ export function Editor({ auth, email, dryRun = false }) {
           </button>
         ))}
       </div>
+      {selectedEl ? (
+        <FormatBar el={selectedEl} content={content} setField={setField} grid={grid} setGrid={setGrid} onClose={() => setSelectedEl(null)} />
+      ) : (
+        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place.</p>
+      )}
       <div className="flex-1 min-h-0 flex justify-center px-2 pb-2">
         <iframe
           ref={iframeRef}

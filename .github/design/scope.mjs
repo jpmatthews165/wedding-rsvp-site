@@ -25,6 +25,7 @@ export const PROTECTED = [
   /^src\/site\/editing\.jsx$/,
   /^src\/site\/PreviewFrame\.jsx$/,
   /^src\/site\/PublicSite\.jsx$/,
+  /^src\/site\/DragLayer\.jsx$/,
 ];
 
 export const isAllowed = (path) => ALLOWED.some((r) => r.test(path)) && !PROTECTED.some((r) => r.test(path));

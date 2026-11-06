@@ -3,7 +3,7 @@ import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import CoverImage from '../CoverImage.jsx';
 import { safeUrl } from '../../lib/safeUrl.js';
-import { T, useShow, useSection, useEdit, ImageButton } from '../editing.jsx';
+import { T, useShow, useSection, useEdit, ImageButton, Movable } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
 const btnOutline = 'font-subtitle border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
@@ -130,10 +130,10 @@ export function DetailsSection({ site }) {
         </div>
         {(section.image || edit) && (
           <RevealOnScroll delay={200}>
-            <div className="relative h-[80vh] w-full bg-paper2 overflow-hidden rounded-sm z-10 shadow-lg border border-accent2/40">
+            <Movable f="image" className="relative h-[80vh] w-full bg-paper2 overflow-hidden rounded-sm z-10 shadow-lg border border-accent2/40">
               <CoverImage src={section.image} pos={section.imagePos} />
               <ImageButton f="image" className="top-4 right-4" />
-            </div>
+            </Movable>
           </RevealOnScroll>
         )}
       </div>
@@ -332,11 +332,11 @@ export function TextSection() {
         </RevealOnScroll>
         {hasImage && (
           <RevealOnScroll delay={200}>
-            <div className="relative h-[60vh] w-full bg-paper2 overflow-hidden rounded-sm shadow-lg">
+            <Movable f="image" className="relative h-[60vh] w-full bg-paper2 overflow-hidden rounded-sm shadow-lg">
               <CoverImage src={section.image} pos={section.imagePos} />
               {!section.image && <p className="absolute inset-0 flex items-center justify-center font-sans text-sm text-ink/50">No photo — optional</p>}
               <ImageButton f="image" className="top-4 right-4" />
-            </div>
+            </Movable>
           </RevealOnScroll>
         )}
       </div>
@@ -360,11 +360,11 @@ export function GallerySection() {
         <div className="columns-1 sm:columns-2 md:columns-3 gap-6 [&>*]:mb-6">
           {(section.photos || []).map((p, i) => p.image && (
             <RevealOnScroll key={i} delay={(i % 3) * 100}>
-              <figure className="break-inside-avoid relative">
+              <Movable f={itemPath('photos', i, 'image')} as="figure" className="break-inside-avoid relative">
                 <img src={p.image} alt={p.caption || ''} loading="lazy" className="w-full rounded-sm shadow-md" />
                 <ImageButton f={itemPath('photos', i, 'image')} className="top-3 right-3" />
                 <T f={itemPath('photos', i, 'caption')} as="figcaption" className="font-details text-sm text-ink/80 mt-2 text-center" placeholder="Caption (optional)" />
-              </figure>
+              </Movable>
             </RevealOnScroll>
           ))}
         </div>

@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+
+// Editor-only drag overlay; loaded only inside the editor preview.
+const DragLayer = lazy(() => import('./DragLayer.jsx'));
 import { Menu, X } from 'lucide-react';
 import { EditContext, SectionContext, SectionFrame } from './editing.jsx';
 import { SECTION_TYPES, sectionLabel } from '../content/schema.js';
@@ -8,6 +11,7 @@ import {
 } from './sections/Sections.jsx';
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
+
 
 const COMPONENTS = {
   hero: HeroSection, details: DetailsSection, travel: TravelSection, countdown: CountdownSection,
@@ -88,6 +92,8 @@ export default function Site({ content, edit = null }) {
             </SectionContext.Provider>
           );
         })}
+
+        {edit && <Suspense fallback={null}><DragLayer content={content} edit={edit} /></Suspense>}
 
         <footer className="py-12 bg-paper border-t border-brand/15 text-center relative z-20">
           <p className="font-title text-brand text-2xl">{site.footerText}</p>

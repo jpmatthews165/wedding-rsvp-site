@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { ImagePlus, Move } from 'lucide-react';
 import { getAt } from '../content/paths.js';
+import { boxCss, isMoved, styleKey, textCss } from '../content/fieldStyle.js';
 
 // When the site renders inside the editor, EditContext carries callbacks back to it.
 // On the public site it's null and everything renders as plain text.
@@ -22,12 +23,38 @@ const readText = (el) => {
   return text;
 };
 
-// <T f="title" as="h2" className="..." />  — renders section[f] and makes it
-// click-to-edit in the editor. Use `multiline` to allow line breaks.
+// Formatting + position saved for one element (see content/fieldStyle.js).
+export const useFieldStyle = (f) => {
+  const { section } = useSection();
+  return section.styles?.[styleKey(f)];
+};
+
+// Props for an element's outer box: position offset, alignment, and (in the editor)
+// the hooks the selection/drag layer uses to find it.
+const useBoxProps = (f, kind, style) => {
+  const edit = useEdit();
+  const { base } = useSection();
+  const st = useFieldStyle(f);
+  const path = `${base}.${f}`;
+  return {
+    style: { ...style, ...boxCss(st) },
+    'data-moved': isMoved(st) ? '' : undefined,
+    'data-el': edit ? path : undefined,
+    'data-el-kind': edit ? kind : undefined,
+    'data-el-selected': edit && edit.selectedEl === path ? '' : undefined,
+  };
+};
+
+// <T f="title" as="h2" className="..." />  — renders section[f] with its saved
+// formatting and position, and makes it click-to-edit in the editor.
+// Use `multiline` to allow line breaks. The outer tag keeps the design's classes
+// (so sizes stay responsive); an inner span carries the element's own formatting.
 export function T({ f, as: Tag = 'span', className = '', multiline = false, placeholder, style }) {
   const edit = useEdit();
   const { section, base } = useSection();
   const value = getAt(section, f) ?? '';
+  const st = useFieldStyle(f);
+  const box = useBoxProps(f, 'text', style);
   const ref = useRef(null);
 
   // Keep the editable DOM in sync with outside changes (undo, AI edits, side panel)
@@ -39,7 +66,11 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
 
   if (!edit) {
     if (!hasText(value)) return null;
-    return <Tag className={`${className} whitespace-pre-line`} style={style}>{value}</Tag>;
+    return (
+      <Tag className={`${className} whitespace-pre-line`} {...box}>
+        <span style={textCss(st)}>{value}</span>
+      </Tag>
+    );
   }
 
   const commit = () => {
@@ -52,27 +83,45 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
   };
 
   return (
+    <Tag className={`${className} whitespace-pre-line`} {...box}>
+      <span
+        ref={ref}
+        style={textCss(st)}
+        data-editable=""
+        data-placeholder={placeholder || 'Click to add text'}
+        contentEditable="plaintext-only"
+        suppressContentEditableWarning
+        spellCheck
+        onFocus={() => { edit.onSelect(base); edit.onSelectEl(`${base}.${f}`, 'text'); }}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') { e.currentTarget.innerText = value; e.currentTarget.blur(); }
+          if (e.key === 'Enter' && !multiline) { e.preventDefault(); e.currentTarget.blur(); }
+        }}
+        onPaste={(e) => {
+          // Fallback for browsers without plaintext-only: strip formatting.
+          e.preventDefault();
+          document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+        }}
+      />
+    </Tag>
+  );
+}
+
+// A foreground photo (or any block) that can be selected and dragged in the editor.
+// <Movable f="image" className="relative h-[80vh] …">…</Movable>
+export function Movable({ f, as: Tag = 'div', className = '', style, children }) {
+  const edit = useEdit();
+  const { base } = useSection();
+  const box = useBoxProps(f, 'image', style);
+  return (
     <Tag
-      ref={ref}
-      className={`${className} whitespace-pre-line`}
-      style={style}
-      data-editable=""
-      data-placeholder={placeholder || 'Click to add text'}
-      contentEditable="plaintext-only"
-      suppressContentEditableWarning
-      spellCheck
-      onFocus={() => edit.onSelect(base)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') { e.currentTarget.innerText = value; e.currentTarget.blur(); }
-        if (e.key === 'Enter' && !multiline) { e.preventDefault(); e.currentTarget.blur(); }
-      }}
-      onPaste={(e) => {
-        // Fallback for browsers without plaintext-only: strip formatting.
-        e.preventDefault();
-        document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
-      }}
-    />
+      className={className}
+      {...box}
+      onPointerDown={edit ? (e) => { if (!e.target.closest('button')) { edit.onSelect(base); edit.onSelectEl(`${base}.${f}`, 'image'); } } : undefined}
+    >
+      {children}
+    </Tag>
   );
 }
 

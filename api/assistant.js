@@ -14,6 +14,7 @@ import { readJsonBody } from './_lib.js';
 import { SECTION_TYPES, SITE_FIELDS } from '../src/content/schema.js';
 import { applyOperations } from '../src/content/paths.js';
 import { COLOR_FIELDS, BUILTIN_FONTS, GOOGLE_FONT_SUGGESTIONS, THEME_PRESETS, isHex } from '../src/content/theme.js';
+import { ALIGNS, COLOR_TOKENS, FONT_ROLES, OFFSET_LIMIT } from '../src/content/fieldStyle.js';
 
 export const config = { maxDuration: 60 };
 
@@ -47,6 +48,14 @@ const POSITION_TEXT = `Photo positions: any image field <key> can have a compani
   mobile is an optional { x, y, zoom } used on phones (phones crop the sides of tall photos, so y often has no effect there; zoom with a low y moves people down on phones).
   Change positions in small steps (about 5–10 at a time) and tell them they can fine-tune with the Reposition button.`;
 
+const STYLE_TEXT = `Per-element formatting and position: each section may have "styles", an object keyed by the field path with dots replaced by underscores (e.g. "title", "items_0_q", "photos_2_image"). Each value is { font, size, color, align, bold, italic, x, y, mx, my }, all optional:
+  font: ${FONT_ROLES.map((r) => `"${r.key}" (${r.label})`).join(', ')} — follows the theme fonts.
+  size: multiplier of the design's normal size, 0.5–3 (1 = normal; omit for normal).
+  color: a theme color name (${COLOR_TOKENS.map((t) => `"${t.key}"`).join(', ')}) — preferred, it follows the palette — or "#rrggbb".
+  align: ${ALIGNS.map((a) => `"${a}"`).join(', ')}. bold / italic: true or false.
+  x, y: desktop offset in px from the element's normal spot (positive = right / down); mx, my: the same for phones. Keep moves small (multiples of 8, usually under 120) so nothing leaves its section.
+Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.`;
+
 const SCHEMA_TEXT = [
   'site (object):',
   describeFields(SITE_FIELDS),
@@ -54,6 +63,8 @@ const SCHEMA_TEXT = [
   THEME_TEXT,
   '',
   POSITION_TEXT,
+  '',
+  STYLE_TEXT,
   '',
   'sections (array, rendered top to bottom). Every section has: id (unique slug), type, visible (bool), showInNav (bool), navLabel (text).',
   'Section types:',
@@ -137,6 +148,25 @@ const validate = (content, operations) => {
   }
   for (const [k, f] of Object.entries(next.theme?.fonts || {})) {
     if (!['builtin', 'google', 'custom'].includes(f?.source) || typeof f.family !== 'string' || !f.family) throw new Error(`theme.fonts.${k} needs source and family`);
+  }
+  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my'];
+  for (const sec of next.sections) {
+    if (sec.styles == null) continue;
+    if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);
+    for (const [key, st] of Object.entries(sec.styles)) {
+      if (st == null) continue;
+      if (typeof st !== 'object') throw new Error(`styles.${key} must be an object`);
+      for (const [prop, v] of Object.entries(st)) {
+        if (v == null) continue;
+        if (!STYLE_KEYS.includes(prop)) throw new Error(`styles.${key}.${prop} is not a style property`);
+        if (prop === 'font' && !FONT_ROLES.some((r) => r.key === v)) throw new Error(`styles.${key}.font must be one of ${FONT_ROLES.map((r) => r.key).join(', ')}`);
+        if (prop === 'color' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`styles.${key}.color must be a theme color name or "#rrggbb"`);
+        if (prop === 'align' && !ALIGNS.includes(v)) throw new Error(`styles.${key}.align must be one of ${ALIGNS.join(', ')}`);
+        if (prop === 'size' && !(v >= 0.5 && v <= 3)) throw new Error(`styles.${key}.size must be between 0.5 and 3`);
+        if ((prop === 'bold' || prop === 'italic') && typeof v !== 'boolean') throw new Error(`styles.${key}.${prop} must be true or false`);
+        if (['x', 'y', 'mx', 'my'].includes(prop) && !(Number.isFinite(v) && Math.abs(v) <= OFFSET_LIMIT)) throw new Error(`styles.${key}.${prop} must be a number of pixels`);
+      }
+    }
   }
   for (const [type, def] of Object.entries(SECTION_TYPES)) {
     if (def.unique && next.sections.filter((s) => s.type === type).length > 1) throw new Error(`only one "${type}" section is allowed`);

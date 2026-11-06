@@ -83,3 +83,14 @@
   opacity: 0; transition: opacity 0.2s; pointer-events: none;
 }
 .edit-section:hover .edit-section-badge, .edit-section-selected .edit-section-badge { opacity: 1; }
+
+/* ---------- Element positions (dragged in the editor; see content/fieldStyle.js) ----------
+   `translate` is separate from `transform`, so it combines with the reveal animation. */
+[data-moved] { translate: var(--dx, 0px) var(--dy, 0px); }
+@media (max-width: 600px) {
+  [data-moved] { translate: var(--mx, 0px) var(--my, 0px); }
+}
+
+/* Editor: the element picked for formatting / dragging. */
+.edit-mode [data-el-selected] { outline: 2px solid #6c5d84; outline-offset: 6px; border-radius: 2px; }
+.edit-mode [data-el-kind="image"] { cursor: pointer; }

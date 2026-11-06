@@ -94,7 +94,7 @@ jobs:
               "Edit(src/index.css)" "Edit(tailwind.config.js)" \
               "Edit(src/content/schema.js)" "Edit(src/content/defaultContent.js)" "Edit(src/content/theme.js)" \
             --disallowedTools "Bash" "WebFetch" "WebSearch" \
-              "Edit(src/site/editing.jsx)" "Edit(src/site/PreviewFrame.jsx)" "Edit(src/site/PublicSite.jsx)" \
+              "Edit(src/site/editing.jsx)" "Edit(src/site/PreviewFrame.jsx)" "Edit(src/site/PublicSite.jsx)" "Edit(src/site/DragLayer.jsx)" \
               "Edit(src/site/sections/useRsvp.js)" "Edit(api/**)" "Edit(src/admin/**)" "Edit(.github/**)" \
             --max-budget-usd 4 \
             --no-session-persistence \
