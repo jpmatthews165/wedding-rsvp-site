@@ -102,6 +102,15 @@
   [data-mh] { height: var(--mh) !important; }
 }
 
+/* Section height, set by dragging a section's bottom edge in the editor.
+   Shortening only removes bottom padding; growing sets a minimum height. */
+@media (min-width: 601px) {
+  [data-sh] > section { height: auto !important; min-height: var(--sh) !important; padding-bottom: var(--spb) !important; }
+}
+@media (max-width: 600px) {
+  [data-msh] > section, [data-msh-auto] > section { height: auto !important; min-height: var(--msh) !important; padding-bottom: var(--mspb) !important; }
+}
+
 /* Editor: the element picked for formatting / dragging. */
 .edit-mode [data-el-selected] { outline: 2px solid #6c5d84; outline-offset: 6px; border-radius: 2px; }
 .edit-mode [data-el-kind="image"], .edit-mode [data-el-kind="line"], .edit-mode [data-el-kind="box"], .edit-mode [data-el-kind="map"] { cursor: pointer; }

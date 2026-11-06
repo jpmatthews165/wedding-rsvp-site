@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { ImagePlus, Move } from 'lucide-react';
 import { getAt } from '../content/paths.js';
-import { boxAttrs, boxCss, styleKey, textCss } from '../content/fieldStyle.js';
+import { boxAttrs, boxCss, cleanSectionLayout, layoutGrid, styleKey, textCss } from '../content/fieldStyle.js';
+import { PHONE_QUERY } from './CoverImage.jsx';
 
 // When the site renders inside the editor, EditContext carries callbacks back to it.
 // On the public site it's null and everything renders as plain text.
@@ -186,6 +187,105 @@ export function SectionFrame({ children, label }) {
     >
       <div className="edit-section-badge">{label}</div>
       {children}
+      <SectionResizeHandle />
+    </div>
+  );
+}
+
+// Editor: drag a section's bottom edge to make the section taller or shorter.
+// Desktop and phone heights are separate (the preview width decides which).
+// Shortening only removes the section's bottom padding, so content never clips.
+// Double-click the bar to go back to the design's own height.
+function SectionResizeHandle() {
+  const edit = useEdit();
+  const { section, base } = useSection();
+  const ref = useRef(null);
+  const drag = useRef(null);
+  const [readout, setReadout] = useState(null);
+  if (!edit) return null;
+  const step = layoutGrid(edit.site);
+
+  const elements = () => {
+    const wrapper = ref.current?.parentElement?.querySelector(':scope > [data-section-base]');
+    return { wrapper, sec: wrapper?.querySelector(':scope > section') };
+  };
+
+  const onDown = (e) => {
+    const { wrapper, sec } = elements();
+    if (!sec) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const phone = window.matchMedia(PHONE_QUERY).matches;
+    // The design's own height and bottom padding (without any saved override).
+    const attrs = ['data-sh', 'data-msh', 'data-msh-auto'];
+    const saved = attrs.map((a) => [a, wrapper.getAttribute(a)]);
+    attrs.forEach((a) => wrapper.removeAttribute(a));
+    const H0 = sec.offsetHeight;
+    const pb0 = parseFloat(getComputedStyle(sec).paddingBottom) || 0;
+    saved.forEach(([a, v]) => { if (v !== null) wrapper.setAttribute(a, v); });
+    drag.current = { y: e.clientY, H0, pb0, Hcur: sec.offsetHeight, wrapper, phone, target: sec.offsetHeight };
+    setReadout(sec.offsetHeight);
+  };
+
+  const apply = (d, target) => {
+    const pb = target < d.H0 ? Math.max(0, d.pb0 - (d.H0 - target)) : d.pb0;
+    const [attr, vh, vpb] = d.phone ? ['data-msh', '--msh', '--mspb'] : ['data-sh', '--sh', '--spb'];
+    if (d.phone) d.wrapper.removeAttribute('data-msh-auto');
+    d.wrapper.setAttribute(attr, '');
+    d.wrapper.style.setProperty(vh, `${target}px`);
+    d.wrapper.style.setProperty(vpb, `${pb}px`);
+    return pb;
+  };
+
+  const onMove = (e) => {
+    const d = drag.current;
+    if (!d) return;
+    let target = Math.round((d.Hcur + (e.clientY - d.y)) / step) * step;
+    target = Math.max(Math.ceil(d.H0 - d.pb0), Math.min(8000, target)); // never smaller than the content
+    d.target = target;
+    apply(d, target);
+    setReadout(target);
+  };
+
+  const onUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    setReadout(null);
+    if (!d || d.target === d.Hcur) return;
+    const pb = apply(d, d.target);
+    const cur = cleanSectionLayout(section.layout);
+    const same = Math.abs(d.target - d.H0) < 1;
+    const next = d.phone
+      ? { ...cur, mh: same ? undefined : d.target, mpb: same ? undefined : Math.round(pb) }
+      : { ...cur, h: same ? undefined : d.target, pb: same ? undefined : Math.round(pb), d: same ? undefined : Math.round(d.target - d.H0) };
+    edit.onPatch(`${base}.layout`, next);
+  };
+
+  const reset = () => {
+    const phone = window.matchMedia(PHONE_QUERY).matches;
+    const cur = cleanSectionLayout(section.layout);
+    edit.onPatch(`${base}.layout`, phone ? { ...cur, mh: undefined, mpb: undefined } : { ...cur, h: undefined, pb: undefined, d: undefined });
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Drag to resize section"
+      title="Drag to make this section taller or shorter · double-click to reset"
+      onPointerDown={onDown}
+      onPointerMove={onMove}
+      onPointerUp={onUp}
+      onPointerCancel={onUp}
+      onDoubleClick={reset}
+      className="section-resize absolute left-0 right-0 -bottom-2 h-4 z-[60] cursor-ns-resize touch-none group"
+    >
+      <div className={`absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-[#6c5d84] transition-opacity ${readout !== null ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+      <span className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#6c5d84] text-white text-[11px] font-sans font-semibold px-2.5 py-1 shadow whitespace-nowrap transition-opacity ${readout !== null ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        {readout !== null ? `${readout} px` : 'Drag to resize section'}
+      </span>
     </div>
   );
 }

@@ -56,7 +56,8 @@ const STYLE_TEXT = `Per-element formatting and position: each section may have "
   x, y: desktop offset in px from the element's normal spot (positive = right / down); mx, my: the same for phones. Keep moves small (multiples of 8, usually under 120) so nothing leaves its section.
   w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of buttons/lines/boxes (theme color name or "#rrggbb"). radius: corner rounding in px (photos, buttons, boxes, map).
   Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
-Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.`;
+Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.
+Section height: sections.N.layout = { h, pb, d } (desktop minimum height px, bottom padding px, change vs the design's height px) and { mh, mpb } for phones. Prefer leaving these to the editor's drag handle; remove layout to reset.`;
 
 const SCHEMA_TEXT = [
   'site (object):',
@@ -155,6 +156,13 @@ const validate = (content, operations) => {
   for (const sec of next.sections) {
     if (sec.phoneOrder != null && (!Array.isArray(sec.phoneOrder) || sec.phoneOrder.length > 300 || sec.phoneOrder.some((k) => typeof k !== 'string'))) {
       throw new Error(`sections "${sec.id}".phoneOrder must be a list of item keys`);
+    }
+    if (sec.layout != null) {
+      if (typeof sec.layout !== 'object' || Array.isArray(sec.layout)) throw new Error(`sections "${sec.id}".layout must be an object`);
+      for (const [k, v] of Object.entries(sec.layout)) {
+        if (v == null) continue;
+        if (!['h', 'pb', 'mh', 'mpb', 'd'].includes(k) || !Number.isFinite(v) || Math.abs(v) > 8000 || (k !== 'd' && v < 0)) throw new Error(`sections "${sec.id}".layout.${k} is not valid`);
+      }
     }
     if (sec.styles == null) continue;
     if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);

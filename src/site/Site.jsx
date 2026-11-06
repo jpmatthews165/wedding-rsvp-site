@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 
 // Editor-only drag overlay; loaded only inside the editor preview.
 const DragLayer = lazy(() => import('./DragLayer.jsx'));
@@ -12,7 +12,7 @@ import {
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
 import { usePhoneLayout } from './phoneLayout.js';
-import { phoneBuffer } from '../content/fieldStyle.js';
+import { phoneBuffer, sectionLayoutProps } from '../content/fieldStyle.js';
 
 
 const COMPONENTS = {
@@ -43,11 +43,14 @@ export default function Site({ content, edit = null }) {
   const rootRef = useRef(null);
   usePhoneLayout(rootRef, phoneBuffer(site), [content]);
 
+  // The editor's callbacks plus site settings (grid size etc.) for editing tools.
+  const editValue = useMemo(() => (edit ? { ...edit, site } : null), [edit, site]);
+
   const navItems = sections.filter((s) => s.visible !== false && s.showInNav);
   const go = (id) => { scrollToSection(id); setIsMenuOpen(false); };
 
   return (
-    <EditContext.Provider value={edit}>
+    <EditContext.Provider value={editValue}>
       <ThemeStyle theme={content.theme} />
       <div
         ref={rootRef}
@@ -93,6 +96,7 @@ export default function Site({ content, edit = null }) {
             <SectionContext.Provider key={section.id} value={{ section, base: `sections.${i}` }}>
               <SectionFrame label={`${SECTION_TYPES[section.type].label}${hidden ? ' · hidden' : ''}`}>
                 <div
+                  {...sectionLayoutProps(section.layout)}
                   className={hidden ? 'opacity-40' : ''}
                   // Desktop reading order, used to re-flow this section on phones (phoneLayout.js).
                   data-phone-order={Array.isArray(section.phoneOrder) && section.phoneOrder.length ? JSON.stringify(section.phoneOrder) : undefined}

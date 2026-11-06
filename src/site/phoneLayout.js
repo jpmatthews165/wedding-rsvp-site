@@ -13,6 +13,8 @@ import { PHONE_QUERY } from './CoverImage.jsx';
 // 2. Placement: items laid out automatically (data-pl = desktop placement, 0 = left
 //    buffer … 1 = right buffer) are placed at the same relative spot horizontally,
 //    never past the section's buffer.
+// 3. Section height: a section made taller/shorter on desktop (data-sd = change in
+//    px) gets half that change on phones, unless the phone height was set by hand.
 // Items hand-tuned in the editor's phone preview keep their own offsets (--mx/--my);
 // the re-flow shift is added underneath so they stay in reading order.
 
@@ -85,12 +87,30 @@ function placeHorizontally(root, buffer) {
   });
 }
 
+function sectionHeights(root) {
+  root.querySelectorAll('[data-sd]').forEach((wrapper) => {
+    const sec = wrapper.querySelector(':scope > section');
+    if (!sec) return;
+    wrapper.removeAttribute('data-msh-auto');
+    const H0 = sec.offsetHeight;
+    const pb0 = parseFloat(getComputedStyle(sec).paddingBottom) || 0;
+    const d = (parseFloat(wrapper.getAttribute('data-sd')) || 0) / 2;
+    const target = Math.max(Math.ceil(H0 - pb0), Math.round(H0 + d));
+    const pb = target < H0 ? Math.max(0, pb0 - (H0 - target)) : pb0;
+    wrapper.style.setProperty('--msh', `${target}px`);
+    wrapper.style.setProperty('--mspb', `${Math.round(pb)}px`);
+    wrapper.setAttribute('data-msh-auto', '');
+  });
+}
+
 export function resolvePhoneLayout(root, buffer) {
   if (!root) return;
   if (!window.matchMedia(PHONE_QUERY).matches) {
     root.querySelectorAll('[data-reflow]').forEach((el) => { el.removeAttribute('data-reflow'); el.style.removeProperty('--ry'); });
+    root.querySelectorAll('[data-msh-auto]').forEach((el) => el.removeAttribute('data-msh-auto'));
     return;
   }
+  sectionHeights(root);
   root.querySelectorAll('[data-phone-order]').forEach(reflowSection);
   placeHorizontally(root, buffer);
 }

@@ -170,3 +170,39 @@ export const approximatePhone = (st, kind, m, site) => {
   // (phoneOrder + src/site/phoneLayout.js), so desktop y moves aren't copied.
   return out;
 };
+
+// ---- Section height (dragging a section's bottom edge in the editor).
+// Stored on the section as `layout`:
+//   h, pb   — desktop: minimum height and bottom padding in px
+//   mh, mpb — phone: the same (set when fine-tuned in the phone preview)
+//   d       — desktop change vs the design's own height (px); phones without their
+//             own values get half of it, worked out on the phone (phoneLayout.js)
+export const cleanSectionLayout = (l) => {
+  if (!l || typeof l !== 'object') return {};
+  const out = {};
+  for (const k of ['h', 'pb', 'mh', 'mpb']) {
+    const v = num(l[k], 0, 8000);
+    if (v !== undefined) out[k] = Math.round(v);
+  }
+  const d = num(l.d, -8000, 8000); if (d) out.d = Math.round(d);
+  return out;
+};
+
+// Props for the wrapper around a section (CSS in index.css: [data-sh] > section …).
+export const sectionLayoutProps = (l) => {
+  const st = cleanSectionLayout(l);
+  const props = { style: {} };
+  if (st.h !== undefined) {
+    props['data-sh'] = '';
+    props.style['--sh'] = `${st.h}px`;
+    props.style['--spb'] = `${st.pb ?? 0}px`;
+  }
+  if (st.mh !== undefined) {
+    props['data-msh'] = '';
+    props.style['--msh'] = `${st.mh}px`;
+    props.style['--mspb'] = `${st.mpb ?? 0}px`;
+  } else if (st.d) {
+    props['data-sd'] = String(st.d); // automatic phone height (resolved on phones)
+  }
+  return props;
+};
