@@ -103,8 +103,8 @@ export function Editor({ auth, email, dryRun = false }) {
   const [device, setDevice] = useState('desktop');
   const [picker, setPicker] = useState(null);           // path of image field being changed
   const [adjusting, setAdjusting] = useState(null);     // path of image field being repositioned
-  const [selectedEl, setSelectedEl] = useState(null);   // { path, kind } picked in the preview for formatting/moving
-  const [grid, setGrid] = useState({ step: 8, show: false });
+  const [selection, setSelection] = useState([]);       // [{ path, kind }] picked in the preview (Shift+click groups)
+  const [grid, setGrid] = useState({ step: 16, show: false });
   const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -188,6 +188,8 @@ export function Editor({ auth, email, dryRun = false }) {
   // ---- editing helpers
   const { change, undo, redo, getPresent } = doc_;
   const setField = useCallback((path, value) => change((cur) => setAt(cur, path, value), path), [change]);
+  // Several edits as one Undo step (group moves, align, formatting a group).
+  const setMany = useCallback((changes) => change((cur) => changes.reduce((acc, c) => setAt(acc, c.path, c.value), cur), `many:${changes.map((c) => c.path).join('|')}`), [change]);
   const applyChange = useCallback((next, key) => change(next, key), [change]);
 
   // ---- preview iframe messaging
@@ -196,13 +198,13 @@ export function Editor({ auth, email, dryRun = false }) {
   }, []);
   useEffect(() => { if (frameReady.current && content) post({ type: 'content', content }); }, [content, post]);
   useEffect(() => { if (frameReady.current) post({ type: 'selected', selected }); }, [selected, post]);
-  useEffect(() => { if (frameReady.current) post({ type: 'selectedEl', path: selectedEl?.path || null }); }, [selectedEl, post]);
+  useEffect(() => { if (frameReady.current) post({ type: 'selection', items: selection }); }, [selection, post]);
   useEffect(() => { if (frameReady.current) post({ type: 'grid', grid }); }, [grid, post]);
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && selectedEl && !e.target.isContentEditable) setSelectedEl(null); };
+    const onKey = (e) => { if (e.key === 'Escape' && selection.length && !e.target.isContentEditable) setSelection([]); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selectedEl]);
+  }, [selection]);
 
   const focusPath = useCallback((base) => {
     setSelected(base);
@@ -217,18 +219,19 @@ export function Editor({ auth, email, dryRun = false }) {
         frameReady.current = true;
         post({ type: 'content', content: getPresent() });
         post({ type: 'selected', selected });
-        post({ type: 'selectedEl', path: selectedEl?.path || null });
+        post({ type: 'selection', items: selection });
         post({ type: 'grid', grid });
       }
       if (m.type === 'edit') setField(m.path, m.value);
+      if (m.type === 'editMany' && Array.isArray(m.changes)) setMany(m.changes);
       if (m.type === 'select') setSelected(m.base);
       if (m.type === 'pickImage') setPicker(m.path);
       if (m.type === 'adjustImage') setAdjusting(m.path);
-      if (m.type === 'selectEl') setSelectedEl({ path: m.path, kind: m.kind });
+      if (m.type === 'selection') setSelection(Array.isArray(m.items) ? m.items : []);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [post, setField, selected, selectedEl, grid, getPresent]);
+  }, [post, setField, setMany, selected, selection, grid, getPresent]);
 
   // ---- keyboard shortcuts
   useEffect(() => {
@@ -394,10 +397,13 @@ export function Editor({ auth, email, dryRun = false }) {
           </button>
         ))}
       </div>
-      {selectedEl ? (
-        <FormatBar el={selectedEl} content={content} setField={setField} grid={grid} setGrid={setGrid} onClose={() => setSelectedEl(null)} />
+      {selection.length ? (
+        <FormatBar
+          selection={selection} content={content} setMany={setMany} grid={grid} setGrid={setGrid}
+          onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])}
+        />
       ) : (
-        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place.</p>
+        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several.</p>
       )}
       <div className="flex-1 min-h-0 flex justify-center px-2 pb-2">
         <iframe

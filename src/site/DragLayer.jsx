@@ -4,91 +4,145 @@ import { getAt } from '../content/paths.js';
 import { cleanStyle, styleKey } from '../content/fieldStyle.js';
 import { PHONE_QUERY } from './CoverImage.jsx';
 
-// Editor-only overlay (inside the preview iframe) for the selected element:
-// a drag handle, a snapping grid with margins, and a centre guide.
-// Dragging changes only the element's offset (CSS translate), never the layout
-// around it. Desktop and phone offsets are stored separately (x/y vs mx/my).
+// Editor-only overlay (inside the preview iframe) for the selected element(s):
+// - a drag handle that moves the whole selection (Shift+click builds a group),
+// - smart guides: the moving items' left/centre/right and top/middle/bottom snap to
+//   the same lines of other items and to the section's centre and margins; only the
+//   nearest guide per axis is drawn, and guides win over the grid,
+// - a snapping grid inside the section's margins,
+// - "align" commands from the editor's format bar.
+// Moving only changes each item's offset (CSS translate), never the layout around
+// it. Desktop and phone offsets are stored separately (x/y vs mx/my).
 
 const MARGIN_DESKTOP = 24;
 const MARGIN_PHONE = 16;
-const CENTER_SNAP = 8; // px: how close to the centre line before it snaps
+const GUIDE_SNAP = 10; // px: how close an edge must be before it snaps to a guide
 
 const splitPath = (sel) => {
   const m = /^(sections\.\d+)\.(.+)$/.exec(sel || '');
   return m ? { base: m[1], f: m[2] } : null;
 };
+const stylePathOf = (path) => {
+  const p = splitPath(path);
+  return p ? `${p.base}.styles.${styleKey(p.f)}` : null;
+};
+const findEl = (path) => document.querySelector(`[data-el="${CSS.escape(path)}"]`);
+const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
+const deviceKeys = () => (isPhone() ? ['mx', 'my'] : ['x', 'y']);
+
+// Where the element actually sits right now (its applied translate).
+const currentOffset = (el) => {
+  const [tx = '0', ty = '0'] = (getComputedStyle(el).translate || '').split(' ');
+  const x = parseFloat(tx); const y = parseFloat(ty);
+  return { x: Number.isFinite(x) ? Math.round(x) : 0, y: Number.isFinite(y) ? Math.round(y) : 0 };
+};
+
+const union = (rects) => {
+  const left = Math.min(...rects.map((r) => r.left));
+  const top = Math.min(...rects.map((r) => r.top));
+  const right = Math.max(...rects.map((r) => r.right));
+  const bottom = Math.max(...rects.map((r) => r.bottom));
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+};
+const lines = (r) => ({
+  x: [r.left, r.left + r.width / 2, r.right],
+  y: [r.top, r.top + r.height / 2, r.bottom],
+});
+
+// The selected items that are on the page, with their paths, in selection order.
+const liveItems = (selection) => selection
+  .map((s) => ({ path: s.path, el: findEl(s.path) }))
+  .filter((x) => x.el);
 
 export default function DragLayer({ content, edit }) {
-  const sel = edit.selectedEl;
-  const step = edit.grid?.step || 8;
-  const [box, setBox] = useState(null);        // { el, rect, section } in viewport coords
-  const [drag, setDrag] = useState(null);       // live drag info for guides
+  const selection = edit.selection || [];
+  const step = edit.grid?.step || 16;
+  const [box, setBox] = useState(null);       // { items, union, section }
+  const [guides, setGuides] = useState(null); // { dragging, x?: target, y?: target }
   const dragRef = useRef(null);
+  const key = selection.map((s) => s.path).join('|');
 
-  const parts = splitPath(sel);
-  const style = parts ? cleanStyle(getAt(content, `${parts.base}.styles.${styleKey(parts.f)}`)) : {};
-  const stylePath = parts ? `${parts.base}.styles.${styleKey(parts.f)}` : null;
-
-  // Track the selected element's position every frame while selected.
+  // Track the selected elements every frame while something is selected.
   useEffect(() => {
-    if (!sel) { setBox(null); return; }
+    if (!selection.length) { setBox(null); return; }
     let frame;
     const tick = () => {
-      const el = document.querySelector(`[data-el="${CSS.escape(sel)}"]`);
-      const section = el?.closest('section');
-      if (el && section) {
-        const r = el.getBoundingClientRect();
+      const items = liveItems(selection);
+      const primary = items[items.length - 1]?.el;
+      const section = primary?.closest('section');
+      if (items.length && section) {
+        const u = union(items.map((it) => it.el.getBoundingClientRect()));
         const s = section.getBoundingClientRect();
-        setBox((b) => (b && b.el === el && b.rect.top === r.top && b.rect.left === r.left && b.rect.width === r.width && b.rect.height === r.height && b.section.top === s.top
-          ? b : { el, rect: r, section: s }));
+        setBox((b) => (b && b.items.length === items.length && b.union.left === u.left && b.union.top === u.top && b.union.width === u.width && b.union.height === u.height && b.section.top === s.top
+          ? b : { items, union: u, section: s }));
       } else setBox(null);
       frame = requestAnimationFrame(tick);
     };
     tick();
     return () => cancelAnimationFrame(frame);
-  }, [sel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
-  const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
-  const keys = () => (isPhone() ? ['mx', 'my'] : ['x', 'y']);
-  // Where the element actually sits right now (its applied translate), so a drag
-  // always starts from what's on screen even if saved content is a moment behind.
-  const currentOffset = (el) => {
-    const [tx = '0', ty = '0'] = (getComputedStyle(el).translate || '').split(' ');
-    const x = parseFloat(tx); const y = parseFloat(ty);
-    return { x: Number.isFinite(x) ? Math.round(x) : 0, y: Number.isFinite(y) ? Math.round(y) : 0 };
+  // Lines that other items (and the section) offer to snap to.
+  const targets = (els, section) => {
+    const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+    const sectionEl = els[els.length - 1].closest('section');
+    const out = {
+      x: [
+        { at: section.left + section.width / 2, from: section.top, to: section.bottom },
+        { at: section.left + margin, from: section.top, to: section.bottom },
+        { at: section.right - margin, from: section.top, to: section.bottom },
+      ],
+      y: [{ at: section.top + section.height / 2, from: section.left, to: section.right }],
+    };
+    for (const other of sectionEl.querySelectorAll('[data-el]')) {
+      if (els.some((e) => e === other || e.contains(other) || other.contains(e))) continue;
+      const r = other.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const l = lines(r);
+      l.x.forEach((at) => out.x.push({ at, from: r.top, to: r.bottom }));
+      l.y.forEach((at) => out.y.push({ at, from: r.left, to: r.right }));
+    }
+    return out;
   };
 
-  // Snap + keep inside the section's margins. dx/dy: proposed offset change.
-  const solve = (start, rect0, section, dxRaw, dyRaw) => {
+  // Snap a proposed move (dx, dy) of the group: nearest guide first, else the grid;
+  // then keep every item inside its own section's margins.
+  const solve = (d, dxRaw, dyRaw) => {
+    const u0 = d.union0;
+    const moved = { left: u0.left + dxRaw, top: u0.top + dyRaw, width: u0.width, height: u0.height };
+    moved.right = moved.left + moved.width; moved.bottom = moved.top + moved.height;
+    const ml = lines(moved);
+    const best = (axis, mine) => {
+      let hit = null;
+      for (const t of d.targets[axis]) {
+        for (const m of mine) {
+          const diff = t.at - m;
+          if (Math.abs(diff) <= GUIDE_SNAP && (!hit || Math.abs(diff) < Math.abs(hit.diff))) hit = { diff, t };
+        }
+      }
+      return hit;
+    };
+    const gx = best('x', ml.x);
+    const gy = best('y', ml.y);
+    const dx = gx ? dxRaw + gx.diff : Math.round(dxRaw / step) * step;
+    const dy = gy ? dyRaw + gy.diff : Math.round(dyRaw / step) * step;
+
     const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
-    // Centre guide wins over the grid: if the element's centre is close to the
-    // section's centre line, put it exactly on it; otherwise snap to the grid.
-    const centreX = section.left + section.width / 2;
-    const rawX = start.x + dxRaw;
-    const rawCentre = rect0.left + rect0.width / 2 + (rawX - start.x);
-    let centred = false;
-    let x;
-    if (Math.abs(rawCentre - centreX) <= Math.max(CENTER_SNAP, step)) {
-      x = rawX + (centreX - rawCentre);
-      centred = true;
-    } else {
-      x = Math.round(rawX / step) * step;
-    }
-    let y = Math.round((start.y + dyRaw) / step) * step;
-    // Clamp inside margins.
-    const left = rect0.left + (x - start.x);
-    const right = rect0.right + (x - start.x);
-    const top = rect0.top + (y - start.y);
-    const bottom = rect0.bottom + (y - start.y);
-    if (rect0.width <= section.width - 2 * margin) {
-      if (left < section.left + margin) x += section.left + margin - left;
-      if (right > section.right - margin) x -= right - (section.right - margin);
-    }
-    if (rect0.height <= section.height - 2 * margin) {
-      if (top < section.top + margin) y += section.top + margin - top;
-      if (bottom > section.bottom - margin) y -= bottom - (section.bottom - margin);
-    }
-    return { x: Math.round(x), y: Math.round(y), centred };
+    let minDx = -Infinity, maxDx = Infinity, minDy = -Infinity, maxDy = Infinity;
+    d.items.forEach(({ rect0, section }) => {
+      if (rect0.width <= section.width - 2 * margin) {
+        minDx = Math.max(minDx, section.left + margin - rect0.left);
+        maxDx = Math.min(maxDx, section.right - margin - rect0.right);
+      }
+      if (rect0.height <= section.height - 2 * margin) {
+        minDy = Math.max(minDy, section.top + margin - rect0.top);
+        maxDy = Math.min(maxDy, section.bottom - margin - rect0.bottom);
+      }
+    });
+    const cx = Math.min(maxDx, Math.max(minDx, dx));
+    const cy = Math.min(maxDy, Math.max(minDy, dy));
+    return { dx: Math.round(cx), dy: Math.round(cy), gx: gx && cx === dx ? gx.t : null, gy: gy && cy === dy ? gy.t : null };
   };
 
   const applyLive = (el, kx, ky, x, y) => {
@@ -97,83 +151,136 @@ export default function DragLayer({ content, edit }) {
     el.style.setProperty(ky === 'y' ? '--dy' : '--my', `${y}px`);
   };
 
-  const commit = (x, y) => {
-    const [kx, ky] = keys();
-    edit.onPatch(stylePath, { ...style, [kx]: x, [ky]: y });
+  // Save new offsets for one or more items as a single change (one Undo step).
+  const commitOffsets = (entries) => {
+    const [kx, ky] = deviceKeys();
+    const changes = entries.map(({ path, x, y }) => {
+      const sp = stylePathOf(path);
+      return { path: sp, value: { ...cleanStyle(getAt(content, sp)), [kx]: x, [ky]: y } };
+    }).filter((c) => c.path);
+    if (changes.length) edit.onPatchMany(changes);
+  };
+
+  const snapshot = () => {
+    const items = liveItems(selection).map(({ path, el }) => ({
+      path, el, start: currentOffset(el), rect0: el.getBoundingClientRect(),
+      section: el.closest('section').getBoundingClientRect(),
+    }));
+    return { items, union0: union(items.map((it) => it.rect0)) };
   };
 
   const onPointerDown = (e) => {
     if (!box) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    const [kx, ky] = keys();
+    const [kx, ky] = deviceKeys();
+    const snap = snapshot();
     dragRef.current = {
-      px: e.clientX, py: e.clientY,
-      start: currentOffset(box.el),
-      rect0: box.el.getBoundingClientRect(), section: box.section, el: box.el, kx, ky, last: null,
+      ...snap, px: e.clientX, py: e.clientY, kx, ky, last: null,
+      targets: targets(snap.items.map((it) => it.el), box.section),
     };
-    setDrag({ centred: false });
+    setGuides({ dragging: true });
   };
   const onPointerMove = (e) => {
     const d = dragRef.current;
     if (!d) return;
-    const r = solve(d.start, d.rect0, d.section, e.clientX - d.px, e.clientY - d.py);
+    const r = solve(d, e.clientX - d.px, e.clientY - d.py);
     d.last = r;
-    applyLive(d.el, d.kx, d.ky, r.x, r.y);
-    setDrag({ centred: r.centred });
+    d.items.forEach((it) => applyLive(it.el, d.kx, d.ky, it.start.x + r.dx, it.start.y + r.dy));
+    setGuides({ dragging: true, x: r.gx, y: r.gy });
   };
   const onPointerUp = () => {
     const d = dragRef.current;
     dragRef.current = null;
-    setDrag(null);
-    if (d?.last && (d.last.x !== d.start.x || d.last.y !== d.start.y)) commit(d.last.x, d.last.y);
+    setGuides(null);
+    if (d?.last && (d.last.dx || d.last.dy)) {
+      commitOffsets(d.items.map((it) => ({ path: it.path, x: it.start.x + d.last.dx, y: it.start.y + d.last.dy })));
+    }
   };
 
-  // Arrow keys nudge a selected photo by one grid step (text keeps arrows for the caret).
+  // Arrow keys nudge the selection by one grid step (text keeps arrows for the caret).
   useEffect(() => {
     const onKey = (e) => {
       if (!box || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
       if (document.activeElement?.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || '')) return;
       e.preventDefault();
-      const start = currentOffset(box.el);
+      const d = { ...snapshot(), targets: { x: [], y: [] } };
       const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
       const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
-      const r = solve(start, box.el.getBoundingClientRect(), box.section, dx, dy);
-      commit(r.x, r.y);
+      const r = solve(d, dx, dy);
+      if (r.dx || r.dy) commitOffsets(d.items.map((it) => ({ path: it.path, x: it.start.x + r.dx, y: it.start.y + r.dy })));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  // Align command from the format bar: line the selected items up with each other.
+  const lastAlign = useRef(null);
+  useEffect(() => {
+    const req = edit.alignRequest;
+    if (!req || req.nonce === lastAlign.current) return;
+    lastAlign.current = req.nonce;
+    const { items } = snapshot();
+    if (items.length < 2) return;
+    const u = union(items.map((it) => it.rect0));
+    commitOffsets(items.map(({ path, start, rect0: r }) => {
+      let dx = 0, dy = 0;
+      if (req.mode === 'left') dx = u.left - r.left;
+      if (req.mode === 'right') dx = u.right - r.right;
+      if (req.mode === 'center') dx = (u.left + u.width / 2) - (r.left + r.width / 2);
+      if (req.mode === 'top') dy = u.top - r.top;
+      if (req.mode === 'bottom') dy = u.bottom - r.bottom;
+      if (req.mode === 'middle') dy = (u.top + u.height / 2) - (r.top + r.height / 2);
+      return { path, x: Math.round(start.x + dx), y: Math.round(start.y + dy) };
+    }));
+  });
+
   if (!box) return null;
-  const { rect, section } = box;
+  const { union: u, section } = box;
   const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
-  const showGrid = !!drag || edit.grid?.show;
+  const showGrid = !!guides?.dragging || edit.grid?.show;
+  const count = box.items.length;
+  const lineColor = '#d4583a';
 
   return (
     <>
       {showGrid && (
-        <div aria-hidden="true" className="fixed z-[90] pointer-events-none" style={{
+        <div aria-hidden="true" data-grid="" className="fixed z-[90] pointer-events-none" style={{
           left: section.left, top: section.top, width: section.width, height: section.height,
-          backgroundImage: 'linear-gradient(to right, rgba(108,93,132,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(108,93,132,0.12) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(to right, rgba(108,93,132,0.10) 1px, transparent 1px), linear-gradient(to bottom, rgba(108,93,132,0.10) 1px, transparent 1px)',
           backgroundSize: `${step}px ${step}px`,
         }}>
-          <div className="absolute border border-dashed border-[#6c5d84]/60" style={{ inset: margin }} />
-          <div className="absolute top-0 bottom-0 w-px" style={{ left: '50%', background: drag?.centred ? '#d4583a' : 'rgba(108,93,132,0.35)' }} />
+          <div className="absolute border border-dashed border-[#6c5d84]/55" style={{ inset: margin }} />
         </div>
+      )}
+      {guides?.x && (
+        <div aria-hidden="true" data-guide="x" className="fixed z-[96] pointer-events-none" style={{
+          left: guides.x.at - 0.5, width: 1, background: lineColor,
+          top: Math.min(guides.x.from, u.top) - 8, height: Math.max(guides.x.to, u.bottom) - Math.min(guides.x.from, u.top) + 16,
+        }} />
+      )}
+      {guides?.y && (
+        <div aria-hidden="true" data-guide="y" className="fixed z-[96] pointer-events-none" style={{
+          top: guides.y.at - 0.5, height: 1, background: lineColor,
+          left: Math.min(guides.y.from, u.left) - 8, width: Math.max(guides.y.to, u.right) - Math.min(guides.y.from, u.left) + 16,
+        }} />
+      )}
+      {count > 1 && (
+        <div aria-hidden="true" className="fixed z-[94] pointer-events-none border border-dashed border-[#6c5d84] rounded-sm"
+          style={{ left: u.left - 10, top: u.top - 10, width: u.width + 20, height: u.height + 20 }} />
       )}
       <button
         type="button"
-        title="Drag to move (snaps to the grid). Arrow keys nudge photos."
+        title={count > 1 ? `Drag to move all ${count} (Shift+click to add or remove)` : 'Drag to move (Shift+click another item to group)'}
         aria-label="Drag to move"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className="fixed z-[95] flex items-center justify-center w-7 h-7 rounded-full bg-[#6c5d84] text-white shadow-lg cursor-grab active:cursor-grabbing touch-none"
-        style={{ left: Math.max(4, rect.left - 34), top: Math.max(4, rect.top - 2) }}
+        className="fixed z-[97] flex items-center gap-0.5 h-7 px-1.5 rounded-full bg-[#6c5d84] text-white shadow-lg cursor-grab active:cursor-grabbing touch-none text-[11px] font-semibold font-sans"
+        style={{ left: Math.max(4, u.left - (count > 1 ? 52 : 34)), top: Math.max(4, u.top - 2) }}
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical className="w-4 h-4" />{count > 1 && count}
       </button>
     </>
   );

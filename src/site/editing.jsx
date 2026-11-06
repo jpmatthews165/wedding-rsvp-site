@@ -41,7 +41,7 @@ const useBoxProps = (f, kind, style) => {
     'data-moved': isMoved(st) ? '' : undefined,
     'data-el': edit ? path : undefined,
     'data-el-kind': edit ? kind : undefined,
-    'data-el-selected': edit && edit.selectedEl === path ? '' : undefined,
+    'data-el-selected': edit && edit.selection?.some((x) => x.path === path) ? '' : undefined,
   };
 };
 
@@ -83,7 +83,12 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
   };
 
   return (
-    <Tag className={`${className} whitespace-pre-line`} {...box}>
+    <Tag
+      className={`${className} whitespace-pre-line`}
+      {...box}
+      // Shift+click adds/removes this text from the selection instead of editing it.
+      onPointerDown={(e) => { if (e.shiftKey) { e.preventDefault(); edit.onSelectEl(`${base}.${f}`, 'text', true); } }}
+    >
       <span
         ref={ref}
         style={textCss(st)}
@@ -92,7 +97,7 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
         contentEditable="plaintext-only"
         suppressContentEditableWarning
         spellCheck
-        onFocus={() => { edit.onSelect(base); edit.onSelectEl(`${base}.${f}`, 'text'); }}
+        onFocus={() => { edit.onSelect(base); edit.onSelectEl(`${base}.${f}`, 'text', false); }}
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === 'Escape') { e.currentTarget.innerText = value; e.currentTarget.blur(); }
@@ -118,7 +123,11 @@ export function Movable({ f, as: Tag = 'div', className = '', style, children })
     <Tag
       className={className}
       {...box}
-      onPointerDown={edit ? (e) => { if (!e.target.closest('button')) { edit.onSelect(base); edit.onSelectEl(`${base}.${f}`, 'image'); } } : undefined}
+      onPointerDown={edit ? (e) => {
+        if (e.target.closest('button') || e.target.closest('[data-editable]')) return;
+        edit.onSelect(base);
+        edit.onSelectEl(`${base}.${f}`, 'image', e.shiftKey);
+      } : undefined}
     >
       {children}
     </Tag>

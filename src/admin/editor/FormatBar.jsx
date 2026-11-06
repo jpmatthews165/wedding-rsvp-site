@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  AlignCenter, AlignJustify, AlignLeft, AlignRight, Bold, Grid3x3, Italic, Minus, Pipette, Plus, RotateCcw, X,
+  AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignJustify, AlignLeft,
+  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, Italic, Minus, Pipette, Plus, RotateCcw, X,
 } from 'lucide-react';
 import { getAt } from '../../content/paths.js';
 import { COLOR_TOKENS, FONT_ROLES, cleanStyle, styleKey } from '../../content/fieldStyle.js';
@@ -8,10 +9,24 @@ import { isHex } from '../../content/theme.js';
 
 // Format bar above the preview: formats or positions the element clicked in the preview.
 // Text: font, size, bold/italic, color (theme swatches, any color, eyedropper), alignment.
-// Photos and text: position (reset) and the snapping grid.
+// Photos and text: position (reset), the snapping grid, and — with 2+ selected —
+// aligning the items to each other. Formatting applies to every selected text item.
 
 const SIZES = [0.5, 0.6, 0.75, 0.85, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3];
 const ALIGN_ICONS = { left: AlignLeft, center: AlignCenter, right: AlignRight, justify: AlignJustify };
+// Lining items up with each other (moves them; separate from text alignment).
+const ARRANGE = [
+  ['left', AlignStartVertical, 'Align left edges'],
+  ['center', AlignCenterVertical, 'Align centers'],
+  ['right', AlignEndVertical, 'Align right edges'],
+  ['top', AlignStartHorizontal, 'Align top edges'],
+  ['middle', AlignCenterHorizontal, 'Align middles'],
+  ['bottom', AlignEndHorizontal, 'Align bottom edges'],
+];
+const parse = (path) => {
+  const m = /^(sections\.\d+)\.(.+)$/.exec(path || '');
+  return m ? { base: m[1], f: m[2], stylePath: `${m[1]}.styles.${styleKey(m[2])}` } : null;
+};
 
 const Btn = ({ active, title, onClick, children, disabled }) => (
   <button type="button" title={title} aria-label={title} aria-pressed={active} disabled={disabled} onClick={onClick}
@@ -83,21 +98,29 @@ function ColorMenu({ value, themeColors, onChange }) {
   );
 }
 
-export default function FormatBar({ el, content, setField, grid, setGrid, onClose }) {
-  const m = /^(sections\.\d+)\.(.+)$/.exec(el?.path || '');
-  if (!m) return null;
-  const [, base, f] = m;
-  const stylePath = `${base}.styles.${styleKey(f)}`;
-  const st = cleanStyle(getAt(content, stylePath));
-  const set = (key, value) => setField(`${stylePath}.${key}`, value);
-  const isText = el.kind === 'text';
+export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose }) {
+  const items = selection.map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
+  if (!items.length) return null;
+  const texts = items.filter((i) => i.kind === 'text');
+  const primary = texts[texts.length - 1] || items[items.length - 1];
+  const st = cleanStyle(getAt(content, primary.stylePath));
+  // Set one formatting property on every selected text item (one Undo step).
+  const set = (key, value) => setMany(texts.map((t) => ({ path: `${t.stylePath}.${key}`, value })));
+  const isText = texts.length > 0;
   const sizeIdx = SIZES.indexOf(SIZES.reduce((a, b) => (Math.abs(b - (st.size || 1)) < Math.abs(a - (st.size || 1)) ? b : a)));
-  const moved = !!(st.x || st.y || st.mx || st.my);
-  const label = f.replace(/\.(\d+)\./, ' $1 · ').replace(/([A-Z])/g, ' $1').toLowerCase();
+  const moved = items.some((i) => { const x = cleanStyle(getAt(content, i.stylePath)); return x.x || x.y || x.mx || x.my; });
+  const resetPositions = () => setMany(items.map((i) => {
+    const x = cleanStyle(getAt(content, i.stylePath));
+    return { path: i.stylePath, value: { ...x, x: undefined, y: undefined, mx: undefined, my: undefined } };
+  }));
+  const pretty = (f) => f.replace(/\.(\d+)\./, ' $1 · ').replace(/([A-Z])/g, ' $1').toLowerCase();
+  const label = items.length > 1
+    ? `${items.length} selected`
+    : `${primary.kind === 'text' ? 'Text' : 'Photo'} · ${pretty(primary.f)}`;
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
-      <span className="text-[11px] font-semibold text-[#333036]/60 px-1 capitalize max-w-[9rem] truncate" title={label}>{isText ? 'Text' : 'Photo'} · {label}</span>
+      <span className="text-[11px] font-semibold text-[#333036]/60 px-1 max-w-[9rem] truncate first-letter:uppercase" title={label}>{label}</span>
       <Sep />
       {isText && (
         <>
@@ -120,13 +143,21 @@ export default function FormatBar({ el, content, setField, grid, setGrid, onClos
           <Sep />
         </>
       )}
-      <Btn title="Put back in its original spot" disabled={!moved} onClick={() => setField(stylePath, { ...st, x: undefined, y: undefined, mx: undefined, my: undefined })}>
+      {items.length > 1 && (
+        <>
+          {ARRANGE.map(([mode, Icon, title]) => (
+            <Btn key={mode} title={title} onClick={() => onAlign(mode)}><Icon className="w-4 h-4" /></Btn>
+          ))}
+          <Sep />
+        </>
+      )}
+      <Btn title={items.length > 1 ? 'Put all back in their original spots' : 'Put back in its original spot'} disabled={!moved} onClick={resetPositions}>
         <RotateCcw className="w-3.5 h-3.5" />
       </Btn>
       <Btn title={grid.show ? 'Hide grid' : 'Show grid'} active={grid.show} onClick={() => setGrid({ ...grid, show: !grid.show })}><Grid3x3 className="w-4 h-4" /></Btn>
       <select aria-label="Grid size" value={grid.step} onChange={(e) => setGrid({ ...grid, step: +e.target.value })}
         className="h-8 rounded-md border border-[#333036]/15 bg-white px-1 text-xs">
-        {[8, 16, 24, 32].map((n) => <option key={n} value={n}>{n}px grid</option>)}
+        {[16, 24, 32, 48].map((n) => <option key={n} value={n}>{n}px grid</option>)}
       </select>
       <span className="flex-1" />
       <Btn title="Done (Esc)" onClick={onClose}><X className="w-4 h-4" /></Btn>

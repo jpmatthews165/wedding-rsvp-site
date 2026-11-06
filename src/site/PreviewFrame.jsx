@@ -7,8 +7,10 @@ import Site from './Site.jsx';
 export default function PreviewFrame() {
   const [content, setContent] = useState(null);
   const [selected, setSelected] = useState(null);
-  const [selectedEl, setSelectedEl] = useState(null); // element picked for format bar / dragging
-  const [grid, setGrid] = useState({ step: 8, show: false });
+  // Elements picked for the format bar / dragging: [{ path, kind }], last = primary.
+  const [selection, setSelection] = useState([]);
+  const [grid, setGrid] = useState({ step: 16, show: false });
+  const [alignRequest, setAlignRequest] = useState(null); // { mode, nonce } from the editor
 
   useEffect(() => {
     const send = (msg) => window.parent.postMessage({ source: 'wedding-preview', ...msg }, window.location.origin);
@@ -16,7 +18,8 @@ export default function PreviewFrame() {
       if (e.origin !== window.location.origin || e.data?.source !== 'wedding-editor') return;
       if (e.data.type === 'content') setContent(e.data.content);
       if (e.data.type === 'selected') setSelected(e.data.selected);
-      if (e.data.type === 'selectedEl') setSelectedEl(e.data.path);
+      if (e.data.type === 'selection') setSelection(e.data.items || []);
+      if (e.data.type === 'align') setAlignRequest({ mode: e.data.mode, nonce: Date.now() });
       if (e.data.type === 'grid') setGrid(e.data.grid);
       if (e.data.type === 'scrollTo') {
         document.querySelector(`[data-base="${e.data.base}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -35,12 +38,23 @@ export default function PreviewFrame() {
       onSelect: (base) => { setSelected(base); send({ type: 'select', base }); },
       onPickImage: (path) => send({ type: 'pickImage', path }),
       onAdjustImage: (path) => send({ type: 'adjustImage', path }),
-      selectedEl,
+      selection,
       grid,
-      onSelectEl: (path, kind) => { setSelectedEl(path); send({ type: 'selectEl', path, kind }); },
+      alignRequest,
+      // additive (Shift+click): toggle in the group; otherwise select just this one.
+      onSelectEl: (path, kind, additive) => {
+        setSelection((cur) => {
+          let next;
+          if (additive) next = cur.some((x) => x.path === path) ? cur.filter((x) => x.path !== path) : [...cur, { path, kind }];
+          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind }];
+          if (next !== cur) send({ type: 'selection', items: next });
+          return next;
+        });
+      },
       onPatch: (path, value) => send({ type: 'edit', path, value }),
+      onPatchMany: (changes) => send({ type: 'editMany', changes }),
     };
-  }, [selected, selectedEl, grid]);
+  }, [selected, selection, grid, alignRequest]);
 
   if (!content) return <div className="min-h-screen bg-paper" />;
   return <Site content={content} edit={edit} />;
