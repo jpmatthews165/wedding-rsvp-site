@@ -14,7 +14,7 @@ import { readJsonBody } from './_lib.js';
 import { SECTION_TYPES, SITE_FIELDS } from '../src/content/schema.js';
 import { applyOperations } from '../src/content/paths.js';
 import { COLOR_FIELDS, BUILTIN_FONTS, GOOGLE_FONT_SUGGESTIONS, THEME_PRESETS, isHex } from '../src/content/theme.js';
-import { ALIGNS, COLOR_TOKENS, FONT_ROLES, OFFSET_LIMIT, RADIUS_MAX, SIZE_MAX } from '../src/content/fieldStyle.js';
+import { ALIGNS, COLOR_TOKENS, FILL_MODES, FONT_ROLES, OFFSET_LIMIT, RADIUS_MAX, SIZE_MAX, isFontFamily } from '../src/content/fieldStyle.js';
 
 export const config = { maxDuration: 60 };
 
@@ -49,13 +49,13 @@ const POSITION_TEXT = `Photo positions: any image field <key> can have a compani
   Change positions in small steps (about 5–10 at a time) and tell them they can fine-tune with the Reposition button.`;
 
 export const STYLE_TEXT = `Per-element formatting and position: each section may have "styles", an object keyed by the field path with dots replaced by underscores (e.g. "title", "items_0_q", "photos_2_image"). Each value is { font, size, color, align, bold, italic, x, y, mx, my }, all optional:
-  font: ${FONT_ROLES.map((r) => `"${r.key}" (${r.label})`).join(', ')} — follows the theme fonts.
+  font: ${FONT_ROLES.map((r) => `"${r.key}" (${r.label})`).join(', ')} — follows the theme fonts. ff: a specific font family name instead (any Google Fonts family, e.g. "Playfair Display"); prefer font roles unless they ask for a particular font.
   size: multiplier of the design's normal size, 0.5–3 (1 = normal; omit for normal).
   color: a theme color name (${COLOR_TOKENS.map((t) => `"${t.key}"`).join(', ')}) — preferred, it follows the palette — or "#rrggbb".
   align: ${ALIGNS.map((a) => `"${a}"`).join(', ')}. bold / italic: true or false.
   x, y: desktop offset in px from the element's normal spot (positive = right / down); mx, my: the same for phones. Keep moves small (multiples of 8, usually under 120) so nothing leaves its section.
-  w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of buttons/lines/boxes (theme color name or "#rrggbb"). radius: corner rounding in px (photos, buttons, boxes, map).
-  Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
+  w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of text boxes/buttons/lines/boxes (theme color name or "#rrggbb"). fx: "glass" (frosted, see-through tint with blur) or "clear" (no background). op: transparency of the whole element 0–100. radius: corner rounding in px (photos, buttons, boxes, map).
+  Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", "_panel" (registry card), groups that move a block together ("_head" heading block, "_when", "_where", "_left", "_right", "_text", per item "items_N__item", "airports_N__item"), and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
 Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.
 Section height: sections.N.layout = { h, pb, d } (desktop minimum height px, bottom padding px, change vs the design's height px) and { mh, mpb } for phones. Prefer leaving these to the editor's drag handle; remove layout to reset.
 Section background: sections.N.bg = { color, image, imagePos, imageOpacity }, all optional. color is a theme color name or "#rrggbb" and becomes the section's background color; imageOpacity is 0–100 (a see-through photo shows the color under it). imagePos is like any photo position { x, y, zoom }. The cover (hero), registry and RSVP sections already have a background photo in their own "image" field: for those use "image"/"imagePos" for the photo and bg only for color and imageOpacity. Remove bg to go back to the design's background.`;
@@ -153,7 +153,7 @@ export const validate = (content, operations) => {
   for (const [k, f] of Object.entries(next.theme?.fonts || {})) {
     if (!['builtin', 'google', 'custom'].includes(f?.source) || typeof f.family !== 'string' || !f.family) throw new Error(`theme.fonts.${k} needs source and family`);
   }
-  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'radius', 'mAuto', 'si', 'pw', 'ew', 'pl'];
+  const STYLE_KEYS = ['font', 'ff', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'fx', 'op', 'radius', 'mAuto', 'si', 'pw', 'ew', 'pl'];
   for (const sec of next.sections) {
     if (sec.phoneOrder != null && (!Array.isArray(sec.phoneOrder) || sec.phoneOrder.length > 300 || sec.phoneOrder.some((k) => typeof k !== 'string'))) {
       throw new Error(`sections "${sec.id}".phoneOrder must be a list of item keys`);
@@ -192,6 +192,9 @@ export const validate = (content, operations) => {
         if (['x', 'y', 'mx', 'my'].includes(prop) && !(Number.isFinite(v) && Math.abs(v) <= OFFSET_LIMIT)) throw new Error(`styles.${key}.${prop} must be a number of pixels`);
         if (['w', 'h', 'mw', 'mh'].includes(prop) && !(Number.isFinite(v) && v >= 1 && v <= SIZE_MAX)) throw new Error(`styles.${key}.${prop} must be a size in pixels (1–${SIZE_MAX})`);
         if (prop === 'fill' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`styles.${key}.fill must be a theme color name or "#rrggbb"`);
+        if (prop === 'ff' && !isFontFamily(v)) throw new Error(`styles.${key}.ff must be a font family name (letters, digits, spaces)`);
+        if (prop === 'fx' && !FILL_MODES.includes(v)) throw new Error(`styles.${key}.fx must be one of ${FILL_MODES.join(', ')}`);
+        if (prop === 'op' && !(Number.isFinite(v) && v >= 0 && v <= 100)) throw new Error(`styles.${key}.op must be 0–100`);
         if (prop === 'radius' && !(Number.isFinite(v) && v >= 0 && v <= RADIUS_MAX)) throw new Error(`styles.${key}.radius must be 0–${RADIUS_MAX}`);
       }
     }

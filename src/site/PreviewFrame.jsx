@@ -11,6 +11,18 @@ import Site from './Site.jsx';
 const MEASURE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('measure');
 const SOURCE = MEASURE ? 'wedding-measure' : 'wedding-preview';
 
+// Extra facts the editor's format bar needs about a selected item:
+// parent — the selectable box around it ("Select the box around this");
+// label  — for a button, the path of its (locked) text, so the text can be formatted.
+const describe = (path, kind) => {
+  const el = document.querySelector(`[data-el="${CSS.escape(path)}"]`);
+  const parentEl = el?.parentElement?.closest('[data-el]');
+  return {
+    parent: parentEl ? { path: parentEl.getAttribute('data-el'), kind: parentEl.getAttribute('data-el-kind') } : null,
+    label: kind === 'button' ? el?.querySelector('[data-label]')?.getAttribute('data-label') || null : null,
+  };
+};
+
 export default function PreviewFrame() {
   const [content, setContent] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -75,22 +87,24 @@ export default function PreviewFrame() {
       alignRequest,
       // additive (Shift+click): toggle in the group; otherwise select just this one.
       onSelectEl: (path, kind, additive) => {
-        // For text inside a button/box, tell the editor about the box around it
-        // so it can offer "Select the box around this".
-        const el = document.querySelector(`[data-el="${CSS.escape(path)}"]`);
-        const parentEl = el?.parentElement?.closest('[data-el]');
-        const parent = parentEl ? { path: parentEl.getAttribute('data-el'), kind: parentEl.getAttribute('data-el-kind') } : null;
+        const { parent, label } = describe(path, kind);
         setSelection((cur) => {
           let next;
           if (additive) {
             // A section background can't be grouped with items.
             const base = kind === 'section' ? [] : cur.filter((x) => x.kind !== 'section');
-            next = base.some((x) => x.path === path) ? base.filter((x) => x.path !== path) : [...base, { path, kind, parent }];
+            next = base.some((x) => x.path === path) ? base.filter((x) => x.path !== path) : [...base, { path, kind, parent, label }];
           }
-          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, parent }];
+          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, parent, label }];
           if (next !== cur) send({ type: 'selection', items: next });
           return next;
         });
+      },
+      // Several at once (drag-select box): a temporary group.
+      onSelectEls: (items) => {
+        const next = items.map((it) => ({ ...it, ...describe(it.path, it.kind) }));
+        setSelection(next);
+        send({ type: 'selection', items: next });
       },
       onPatch: (path, value) => send({ type: 'edit', path, value }),
       onPatchMany: (changes) => send({ type: 'editMany', changes }),

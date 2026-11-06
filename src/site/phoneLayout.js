@@ -52,7 +52,13 @@ function reflowSection(wrapper) {
 
   // Desired order of lines: by the earliest desktop reading position of their items.
   const rank = (key) => { const i = order.indexOf(key); return i === -1 ? Infinity : i; };
-  lines.forEach((l, i) => { l.natural = i; l.rank = Math.min(...l.items.map((b) => rank(b.key))); });
+  // A block (e.g. a heading group) saved before it existed is ranked by the items inside it.
+  const rankOf = (b) => {
+    const own = rank(b.key);
+    if (own !== Infinity) return own;
+    return Math.min(Infinity, ...[...b.el.querySelectorAll('[data-el]')].map((c) => rank(c.getAttribute('data-el').slice(base.length + 1))));
+  };
+  lines.forEach((l, i) => { l.natural = i; l.rank = Math.min(...l.items.map(rankOf)); });
   const sorted = [...lines].sort((a, b) => (a.rank - b.rank) || (a.natural - b.natural));
   if (sorted.every((l, i) => l === lines[i])) return; // already in reading order
 

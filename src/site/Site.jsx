@@ -11,8 +11,9 @@ import {
 } from './sections/Sections.jsx';
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
+import { BUILTIN_FONTS } from '../content/theme.js';
 import { usePhoneLayout } from './phoneLayout.js';
-import { phoneBuffer, sectionBgProps, sectionLayoutProps } from '../content/fieldStyle.js';
+import { phoneBuffer, sectionBgProps, sectionLayoutProps, usedFontFamilies } from '../content/fieldStyle.js';
 
 
 const COMPONENTS = {
@@ -51,7 +52,7 @@ export default function Site({ content, edit = null }) {
 
   return (
     <EditContext.Provider value={editValue}>
-      <ThemeStyle theme={content.theme} />
+      <ThemeStyle theme={content.theme} extraFamilies={usedFontFamilies(content, BUILTIN_FONTS.map((f) => f.family))} />
       <div
         ref={rootRef}
         className={`bg-paper text-ink font-details selection:bg-accent selection:text-paper overflow-x-hidden ${edit ? 'edit-mode' : ''}`}

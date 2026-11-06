@@ -13,7 +13,11 @@
 // x, y  — desktop offset in px from the element's normal spot (snapped to a grid)
 // mx,my — phone offset (screens up to 600 px); phones ignore desktop offsets
 // w, h  — desktop size in px (text boxes: width only); mw, mh — phone size
-// fill  — background color for buttons, lines and boxes (token or hex)
+// ff    — a specific font family by name (Google Fonts or a built-in font); wins over
+//         `font`. Google families are loaded by the site (usedFontFamilies → ThemeStyle)
+// fill  — background color for text boxes, buttons, lines and boxes (token or hex)
+// fx    — fill style: 'glass' (frosted: translucent fill + blur) or 'clear' (no fill)
+// op    — transparency of the whole element, 0–100 % (only stored below 100)
 // radius— corner rounding in px for photos, buttons, boxes and the map
 // mAuto — false once phone values were hand-tuned in the phone preview; until then
 //         phone values are worked out automatically from desktop edits
@@ -44,6 +48,9 @@ export const COLOR_TOKENS = [
 ];
 
 export const ALIGNS = ['left', 'center', 'right', 'justify'];
+export const FILL_MODES = ['glass', 'clear'];
+const FAMILY = /^[A-Za-z0-9][A-Za-z0-9 ]{0,59}$/;
+export const isFontFamily = (v) => typeof v === 'string' && FAMILY.test(v.trim());
 export const OFFSET_LIMIT = 2000;
 export const SIZE_MIN = 1;
 export const SIZE_MAX = 4000;
@@ -63,6 +70,7 @@ export const cleanStyle = (s) => {
   if (!s || typeof s !== 'object') return {};
   const out = {};
   if (FONT_ROLES.some((r) => r.key === s.font)) out.font = s.font;
+  if (isFontFamily(s.ff)) out.ff = s.ff.trim();
   const size = num(s.size, 0.5, 3); if (size !== undefined && size !== 1) out.size = size;
   if (colorCss(s.color)) out.color = s.color;
   if (ALIGNS.includes(s.align)) out.align = s.align;
@@ -77,6 +85,8 @@ export const cleanStyle = (s) => {
     if (v) out[k] = Math.round(v);
   }
   if (colorCss(s.fill)) out.fill = s.fill;
+  if (FILL_MODES.includes(s.fx)) out.fx = s.fx;
+  { const v = num(s.op, 0, 100); if (v !== undefined && v < 100) out.op = Math.round(v); }
   const radius = num(s.radius, 0, RADIUS_MAX); if (radius !== undefined) out.radius = Math.round(radius);
   if (s.mAuto === false) out.mAuto = false;
   for (const k of ['si', 'pw', 'ew']) { const v = num(s[k], 1, SIZE_MAX); if (v) out[k] = Math.round(v); }
@@ -88,7 +98,8 @@ export const cleanStyle = (s) => {
 export const textCss = (s) => {
   const st = cleanStyle(s);
   return {
-    fontFamily: st.font ? FONT_ROLES.find((r) => r.key === st.font).css : undefined,
+    fontFamily: st.ff ? `'${st.ff}', ${st.font ? FONT_ROLES.find((r) => r.key === st.font).css : 'serif'}`
+      : st.font ? FONT_ROLES.find((r) => r.key === st.font).css : undefined,
     fontSize: st.size ? `${st.size}em` : undefined,
     color: colorCss(st.color),
     fontWeight: st.bold === undefined ? undefined : st.bold ? 700 : 400,
@@ -101,7 +112,17 @@ export const textCss = (s) => {
 export const boxCss = (s) => {
   const st = cleanStyle(s);
   const css = { textAlign: st.align };
-  if (st.fill) css.backgroundColor = colorCss(st.fill);
+  if (st.fx === 'clear') {
+    Object.assign(css, { backgroundColor: 'transparent', backgroundImage: 'none', boxShadow: 'none', backdropFilter: 'none', WebkitBackdropFilter: 'none' });
+  } else if (st.fx === 'glass') {
+    // Frosted glass, like the cover's RSVP button: a see-through tint + blur.
+    const tint = colorCss(st.fill) || 'rgb(var(--c-paper))';
+    Object.assign(css, {
+      backgroundColor: `color-mix(in srgb, ${tint} 45%, transparent)`, backgroundImage: 'none',
+      backdropFilter: 'blur(12px) saturate(1.2)', WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
+    });
+  } else if (st.fill) css.backgroundColor = colorCss(st.fill);
+  if (st.op !== undefined) css.opacity = st.op / 100;
   if (st.radius !== undefined) css.borderRadius = `${st.radius}px`;
   if (st.x || st.y || st.mx || st.my) {
     css['--dx'] = `${st.x || 0}px`;
@@ -123,6 +144,23 @@ export const boxAttrs = (s) => {
     // Automatic phone layout: where it sits horizontally (resolved on phones).
     'data-pl': st.mAuto !== false && st.x ? String((st.pl ?? 500) / 1000) : undefined,
   };
+};
+
+// A text with its own box fill (or glass) gets a little padding, like a text box.
+export const isTextBox = (s) => {
+  const st = cleanStyle(s);
+  return !!(st.fill || st.fx === 'glass');
+};
+
+// Google font families used by per-element formatting (to load them on the site).
+export const usedFontFamilies = (content, builtin = []) => {
+  const out = new Set();
+  for (const sec of content?.sections || []) {
+    for (const st of Object.values(sec?.styles || {})) {
+      if (st && isFontFamily(st.ff) && !builtin.includes(st.ff.trim())) out.add(st.ff.trim());
+    }
+  }
+  return [...out].sort();
 };
 
 export const isMoved = (s) => {

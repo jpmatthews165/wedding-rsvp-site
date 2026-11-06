@@ -114,9 +114,17 @@
 /* Editor: the element picked for formatting / dragging. */
 .edit-mode [data-el-selected] { outline: 2px solid #6c5d84; outline-offset: 6px; border-radius: 2px; }
 .edit-mode [data-el-kind="image"], .edit-mode [data-el-kind="line"], .edit-mode [data-el-kind="box"], .edit-mode [data-el-kind="map"] { cursor: pointer; }
+/* Blocks of items that move together (<Group>): a faint outline on hover. */
+.edit-mode [data-el-kind="group"]:not([data-el-selected]):hover { outline: 1px dashed rgba(108, 93, 132, 0.45); outline-offset: 6px; }
+.edit-mode [data-el-kind="group"] { cursor: pointer; }
+/* Text inside a button is locked to the button; the button's own cursor applies until it's selected. */
+.edit-mode [data-el-kind="button"]:not([data-el-selected]) [data-label] [data-editable] { cursor: pointer; }
 /* Lines are thin; give them a bigger click target in the editor. */
 .edit-mode [data-el-kind="line"] { position: relative; }
 .edit-mode [data-el-kind="line"]::after { content: ""; position: absolute; inset: -8px 0; }
+
+/* A text or block with its own fill (or frosted glass) becomes a text box. */
+[data-tbox] { padding: clamp(4px, 0.3em, 14px) clamp(8px, 0.6em, 24px); }
 
 /* Section background (section.bg): own stacking context so the layer (z-index -1)
    paints above the design's background but under the content. */

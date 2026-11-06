@@ -4,8 +4,9 @@ import {
   AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, ImagePlus, Italic, Maximize2, Minus, Move, PaintBucket, Pipette, Plus,
   RotateCcw, Smartphone, SquareDashedMousePointer, Trash2, X,
 } from 'lucide-react';
+import FontPicker from './FontPicker.jsx';
 import { getAt } from '../../content/paths.js';
-import { BUFFER_SIZES, COLOR_TOKENS, FONT_ROLES, GRID_SIZES, approximatePhone, bgImageField, cleanSectionBg, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
+import { BUFFER_SIZES, COLOR_TOKENS, GRID_SIZES, approximatePhone, bgImageField, cleanSectionBg, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
 import { SECTION_TYPES } from '../../content/schema.js';
 import { isHex } from '../../content/theme.js';
 
@@ -114,6 +115,35 @@ const Opacity = ({ label, short, value, onChange, disabled }) => (
   </label>
 );
 
+// Fill for text boxes and shapes: a color, frosted glass (see-through tint + blur,
+// like the cover's RSVP button) or clear; plus transparency and corner rounding.
+const FILL_MODES = [[undefined, 'Color', 'Solid color fill'], ['glass', 'Glass', 'Frosted glass: a see-through tint that blurs what is behind'], ['clear', 'Clear', 'No background']];
+function FillControls({ targets, roundable, st, themeColors, setOn }) {
+  const label = targets.length > 1 ? ' (all selected)' : '';
+  return (
+    <>
+      <span className="inline-flex rounded-md border border-[#333036]/15 overflow-hidden h-8" role="group" aria-label="Fill style">
+        {FILL_MODES.map(([mode, name, title]) => (
+          <button key={name} type="button" title={title} aria-pressed={st.fx === mode} onClick={() => setOn(targets, 'fx', mode)}
+            className={`px-2 text-xs ${st.fx === mode ? 'bg-[#6c5d84] text-white' : 'text-[#333036] hover:bg-[#333036]/8'}`}>{name}</button>
+        ))}
+      </span>
+      {st.fx !== 'clear' && (
+        <ColorMenu fill label={(st.fx === 'glass' ? 'Glass tint' : 'Fill color') + label} value={st.fill} themeColors={themeColors}
+          defaultLabel={st.fx === 'glass' ? 'Use the background color as the tint' : undefined} onChange={(v) => setOn(targets, 'fill', v)} />
+      )}
+      <Opacity label={`Transparency${label}`} value={st.op ?? 100} onChange={(v) => setOn(targets, 'op', v === 100 ? undefined : v)} />
+      {roundable.length > 0 && (
+        <label className="h-8 inline-flex items-center gap-1.5 px-1.5 text-xs text-[#333036]" title="Corner rounding">
+          <span className="w-3.5 h-3.5 border-2 border-[#333036]/70 rounded-tl-md border-r-0 border-b-0" />
+          <input type="range" min="0" max="48" step="2" value={st.radius ?? 0} aria-label="Corner rounding"
+            onChange={(e) => setOn(roundable, 'radius', +e.target.value)} className="w-16 accent-[#6c5d84]" />
+        </label>
+      )}
+    </>
+  );
+}
+
 // Clicking empty space in a section: its background color and photo.
 function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onClose }) {
   const base = item.path.replace(/\._bg$/, '');
@@ -165,8 +195,11 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
   }
   const items = selection.filter((s) => s.kind !== 'section').map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
   if (!items.length) return null;
-  const texts = items.filter((i) => i.kind === 'text');
+  // Text formatting applies to selected texts and to the (locked) text of selected buttons.
+  const labels = items.filter((i) => i.kind === 'button' && i.label).map((i) => ({ kind: 'text', path: i.label, ...parse(i.label) })).filter((i) => i.stylePath);
+  const texts = [...items.filter((i) => i.kind === 'text'), ...labels];
   const primary = texts[texts.length - 1] || items[items.length - 1];
+  const named = items[items.length - 1];
   const st = cleanStyle(getAt(content, primary.stylePath));
   // Set one formatting property on every selected text item (one Undo step).
   const set = (key, value) => setMany(texts.map((t) => ({ path: `${t.stylePath}.${key}`, value })));
@@ -174,9 +207,10 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
   const sizeIdx = SIZES.indexOf(SIZES.reduce((a, b) => (Math.abs(b - (st.size || 1)) < Math.abs(a - (st.size || 1)) ? b : a)));
   const moved = items.some((i) => { const x = cleanStyle(getAt(content, i.stylePath)); return x.x || x.y || x.mx || x.my; });
   const boxes = items.filter((i) => i.kind !== 'text');
-  const fillable = boxes.filter((i) => ['button', 'line', 'box'].includes(i.kind));
-  const roundable = boxes.filter((i) => ['image', 'button', 'box', 'map'].includes(i.kind));
-  const primaryBox = boxes[boxes.length - 1];
+  // Text boxes and shapes can have a fill (color / glass / clear) and transparency.
+  const fillable = items.filter((i) => ['text', 'button', 'line', 'box', 'group'].includes(i.kind));
+  const roundable = items.filter((i) => ['image', 'button', 'box', 'map', 'text', 'group'].includes(i.kind));
+  const primaryBox = fillable[fillable.length - 1] || boxes[boxes.length - 1];
   const boxStyle = primaryBox ? cleanStyle(getAt(content, primaryBox.stylePath)) : {};
   const setOn = (list, key, value) => setMany(list.map((i) => ({ path: `${i.stylePath}.${key}`, value })));
   const sized = items.some((i) => { const x = cleanStyle(getAt(content, i.stylePath)); return x.w || x.h || x.mw || x.mh; });
@@ -201,7 +235,7 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
   const pretty = (f) => f.replace(/\.(\d+)\./, ' $1 · ').replace(/([A-Z])/g, ' $1').toLowerCase();
   const label = items.length > 1
     ? `${items.length} selected`
-    : `${{ text: 'Text', image: 'Photo', button: 'Button', line: 'Line', box: 'Box', map: 'Map' }[primary.kind] || 'Item'} · ${pretty(primary.f.replace(/^_|\._/g, (m) => (m === '_' ? '' : '.')))}`;
+    : `${{ text: 'Text', image: 'Photo', button: 'Button', line: 'Line', box: 'Box', map: 'Map', group: 'Group' }[named.kind] || 'Item'} · ${pretty(named.f.replace(/^_|\._/g, (m) => (m === '_' ? '' : '.')))}`;
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
@@ -209,11 +243,8 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
       <Sep />
       {isText && (
         <>
-          <select aria-label="Font" value={st.font || ''} onChange={(e) => set('font', e.target.value || undefined)}
-            className="h-8 rounded-md border border-[#333036]/15 bg-white px-1.5 text-xs max-w-[9.5rem]">
-            <option value="">Font: default</option>
-            {FONT_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-          </select>
+          <FontPicker font={st.font} ff={st.ff} theme={content.theme}
+            onPick={(font, ff) => setMany(texts.flatMap((t) => [{ path: `${t.stylePath}.font`, value: font }, { path: `${t.stylePath}.ff`, value: ff }]))} />
           <Btn title="Smaller" disabled={sizeIdx <= 0} onClick={() => set('size', SIZES[sizeIdx - 1] === 1 ? undefined : SIZES[sizeIdx - 1])}><Minus className="w-3.5 h-3.5" /></Btn>
           <button type="button" title="Reset size" onClick={() => set('size', undefined)} className="h-8 w-11 text-xs tabular-nums text-[#333036] hover:bg-[#333036]/8 rounded-md">{Math.round((st.size || 1) * 100)}%</button>
           <Btn title="Bigger" disabled={sizeIdx >= SIZES.length - 1} onClick={() => set('size', SIZES[sizeIdx + 1] === 1 ? undefined : SIZES[sizeIdx + 1])}><Plus className="w-3.5 h-3.5" /></Btn>
@@ -240,11 +271,9 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
           <Sep />
         </>
       )}
-      {fillable.length > 0 && (
-        <ColorMenu fill label={fillable.length > 1 ? 'Fill color (all selected)' : 'Fill color'} value={boxStyle.fill}
-          themeColors={content.theme?.colors || {}} onChange={(v) => setOn(fillable, 'fill', v)} />
-      )}
-      {roundable.length > 0 && (
+      {fillable.length > 0 ? (
+        <FillControls targets={fillable} roundable={roundable} st={boxStyle} themeColors={content.theme?.colors || {}} setOn={setOn} />
+      ) : roundable.length > 0 && (
         <label className="h-8 inline-flex items-center gap-1.5 px-1.5 text-xs text-[#333036]" title="Corner rounding">
           <span className="w-3.5 h-3.5 border-2 border-[#333036]/70 rounded-tl-md border-r-0 border-b-0" />
           <input type="range" min="0" max="48" step="2" value={boxStyle.radius ?? 0} aria-label="Corner rounding"

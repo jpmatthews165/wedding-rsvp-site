@@ -2,7 +2,7 @@ import { Search, X } from 'lucide-react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import SectionBackground from '../SectionBackground.jsx';
-import { T, useSection, useEdit, ImageButton } from '../editing.jsx';
+import { T, useSection, useEdit, ImageButton, Group } from '../editing.jsx';
 import useRsvp from './useRsvp.js';
 
 // How the RSVP section looks. All behaviour (search, saving answers) lives in
@@ -23,9 +23,11 @@ export default function RsvpSection() {
         <div className="absolute inset-0 bg-paper/85 backdrop-blur-sm z-10 pointer-events-none" />
         <ImageButton f="image" className="bottom-6 right-6" />
         <div className="max-w-xl w-full text-center relative z-20">
-          <RevealOnScroll className="space-y-4 mb-16">
-            <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm text-ink" />
-            <T f="title" as="h2" className="font-title text-5xl md:text-7xl text-brand" />
+          <RevealOnScroll className="mb-16">
+            <Group f="_head" className="space-y-4">
+              <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-xs md:text-sm text-ink" />
+              <T f="title" as="h2" className="font-title text-5xl md:text-7xl text-brand" />
+            </Group>
           </RevealOnScroll>
 
           <RevealOnScroll delay={150} className="relative w-full max-w-md mx-auto">

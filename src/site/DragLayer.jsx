@@ -6,7 +6,9 @@ import { PHONE_QUERY } from './CoverImage.jsx';
 import { readingOrder } from '../content/readingOrder.js';
 
 // Editor-only overlay (inside the preview iframe) for the selected element(s):
-// - a drag handle that moves the whole selection (Shift+click builds a group),
+// - a drag handle that moves the whole selection (Shift+click or a drag-select box
+//   on empty space builds a temporary group; blocks like a heading + line are
+//   <Group>s and move as one),
 // - smart guides: the moving items' left/centre/right and top/middle/bottom snap to
 //   the same lines of other items and to the section's centre and margins; only the
 //   nearest guide per axis is drawn, and guides win over the grid,
@@ -322,10 +324,11 @@ export default function DragLayer({ content, edit }) {
   const HANDLES = {
     text: ['w', 'e'],
     line: ['w', 'e', 'n', 's'],
+    group: ['w', 'e'], // a block of items: width only, its contents re-wrap
   };
   const handleDirs = kind ? (HANDLES[kind] || ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) : [];
   const resizeRef = useRef(null);
-  const MIN = { text: [48, 0], line: [8, 1], button: [48, 24], box: [80, 60], map: [120, 80], image: [40, 40] };
+  const MIN = { text: [48, 0], group: [80, 0], line: [8, 1], button: [48, 24], box: [80, 60], map: [120, 80], image: [40, 40] };
 
   const onResizeDown = (dir) => (e) => {
     if (!box) return;
@@ -362,7 +365,7 @@ export default function DragLayer({ content, edit }) {
     w = Math.max(minW, Math.min(w, d.section.width - 2 * margin));
     h = Math.max(minH || 1, h);
     const setW = sx !== 0;
-    const setH = sy !== 0 && kind !== 'text';
+    const setH = sy !== 0 && kind !== 'text' && kind !== 'group';
     const el = d.el;
     if (setW) { el.setAttribute(`data-${d.kw}`, ''); el.style.setProperty(`--${d.kw}`, `${Math.round(w)}px`); }
     if (setH) { el.setAttribute(`data-${d.kh}`, ''); el.style.setProperty(`--${d.kh}`, `${Math.round(h)}px`); }
