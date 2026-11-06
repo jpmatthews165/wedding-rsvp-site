@@ -82,6 +82,7 @@ export default function ParallaxBackground({ image, speed = 0.25, pos }) {
     <div
       ref={layerRef}
       aria-hidden="true"
+      data-parallax=""
       className="absolute left-0 w-full z-0 pointer-events-none overflow-hidden"
       style={{
         top: 0,

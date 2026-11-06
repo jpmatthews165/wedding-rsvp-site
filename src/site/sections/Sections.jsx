@@ -2,16 +2,39 @@ import { useEffect, useState } from 'react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import CoverImage from '../CoverImage.jsx';
+import SectionBackground from '../SectionBackground.jsx';
 import { safeUrl } from '../../lib/safeUrl.js';
-import { T, useShow, useSection, useEdit, ImageButton } from '../editing.jsx';
+import { T, useShow, useSection, useEdit, useLink, ImageButton, Movable, Group } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
 const btnOutline = 'font-subtitle border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
 const btnSolid = 'font-subtitle border border-brand bg-brand text-paper px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand-dark hover:border-brand-dark transition-colors shadow-sm';
-const Divider = ({ center = true }) => <div className={`h-px w-24 bg-brand/40 ${center ? 'mx-auto' : 'mx-auto md:mx-0'}`} />;
+// Decorative line under headings. Selectable/resizable in the editor (layout key "_divider").
+const Divider = ({ center = true, className = '' }) => (
+  <Movable f="_divider" kind="line" className={`h-px w-24 bg-brand/40 ${center ? 'mx-auto' : 'mx-auto md:mx-0'} ${className}`} />
+);
 const H2 = ({ f = 'title', className = '' }) => (
   <T f={f} as="h2" className={`font-title text-5xl md:text-7xl text-brand mb-6 ${className}`} placeholder="Heading" />
 );
+
+// A button that links to a section on this page ("#rsvp" scrolls there) or a web
+// address (opens in a new tab). The editor's format bar sets where it goes.
+// field: the content field holding its link, if the section type has one.
+function LinkButton({ f, field, fallback, className = '', children }) {
+  const edit = useEdit();
+  const { href, internal, linkProps } = useLink(f, field, fallback);
+  return (
+    <Movable as="a" kind="button" f={f} {...linkProps}
+      href={href || '#'} target={internal || !href ? undefined : '_blank'} rel={internal ? undefined : 'noopener noreferrer'}
+      onClick={(e) => {
+        if (edit || !href) { e.preventDefault(); return; }
+        if (internal) { e.preventDefault(); scrollToSection(href.slice(1)); }
+      }}
+      className={`${className} ${!href && !edit ? `cursor-default ${field ? 'opacity-60' : ''}` : ''}`}>
+      {children}
+    </Movable>
+  );
+}
 
 // A list item's fields are edited at e.g. "items.2.title".
 const itemPath = (list, i, key) => `${list}.${i}.${key}`;
@@ -30,23 +53,26 @@ export function HeroSection() {
   const { section } = useSection();
   return (
     <section id={section.id} className="relative h-screen flex items-center justify-center overflow-hidden bg-paper">
+      <SectionBackground />
       <ParallaxBackground image={section.image} pos={section.imagePos} speed={0.35} />
       <ImageButton f="image" className="bottom-6 right-6" />
       <div className="absolute inset-0 bg-gradient-to-b from-paper via-paper/40 to-transparent z-10 pointer-events-none" />
-      <RevealOnScroll loadImmediately className="relative z-20 text-center space-y-8 p-4 -mt-32 md:-mt-48">
-        <RevealOnScroll loadImmediately delay={0}>
-          <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-ink-soft" />
-        </RevealOnScroll>
-        <RevealOnScroll loadImmediately delay={150}>
-          <T f="title" as="h1" multiline className="font-title text-7xl md:text-[10rem] leading-none text-brand drop-shadow-sm" />
-        </RevealOnScroll>
+      <RevealOnScroll loadImmediately className="relative z-20 text-center p-4 -mt-32 md:-mt-48">
+        <Group f="_head" className="space-y-8">
+          <RevealOnScroll loadImmediately delay={0}>
+            <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-base text-ink-soft" />
+          </RevealOnScroll>
+          <RevealOnScroll loadImmediately delay={150}>
+            <T f="title" as="h1" multiline className="font-title text-7xl md:text-[10rem] leading-none text-brand drop-shadow-sm" />
+          </RevealOnScroll>
+        </Group>
       </RevealOnScroll>
       {useShow('buttonText') && (
         <div className="absolute bottom-12 w-full text-center z-20">
           <RevealOnScroll loadImmediately delay={300}>
-            <button onClick={() => scrollToSection('rsvp')} className="font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
+            <LinkButton f="_btn" fallback="#rsvp" className="inline-flex items-center justify-center font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
               <T f="buttonText" />
-            </button>
+            </LinkButton>
           </RevealOnScroll>
         </div>
       )}
@@ -87,35 +113,42 @@ export function DetailsSection({ site }) {
 
   return (
     <section id={section.id} className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-paper">
+      <SectionBackground />
       <div className="max-w-6xl w-full grid md:grid-cols-2 gap-16 md:gap-24 items-center">
         <div className="space-y-10 text-center md:text-left">
           <RevealOnScroll>
-            <H2 />
-            <Divider center={false} />
+            <Group f="_head">
+              <H2 />
+              <Divider center={false} />
+            </Group>
           </RevealOnScroll>
-          <RevealOnScroll delay={100} className="space-y-2">
-            <T f="whenLabel" as="p" className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-ink-soft" />
-            <T f="dateText" as="p" className="font-title text-4xl md:text-5xl text-brand" />
-            <T f="timeText" as="p" className="font-details text-xl text-ink tracking-wide mt-2" />
+          <RevealOnScroll delay={100}>
+            <Group f="_when" className="space-y-2">
+              <T f="whenLabel" as="p" className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-ink-soft" />
+              <T f="dateText" as="p" className="font-title text-4xl md:text-5xl text-brand" />
+              <T f="timeText" as="p" className="font-details text-xl text-ink tracking-wide mt-2" />
+            </Group>
           </RevealOnScroll>
-          <RevealOnScroll delay={200} className="space-y-2">
-            <T f="whereLabel" as="p" className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-ink-soft" />
-            <T f="venueName" as="p" className="font-title text-4xl md:text-5xl text-brand" />
-            <T f="venueAddress" as="p" multiline className="font-details text-xl text-ink tracking-wide mt-2" />
+          <RevealOnScroll delay={200}>
+            <Group f="_where" className="space-y-2">
+              <T f="whereLabel" as="p" className="font-subtitle tracking-[0.1em] uppercase text-sm md:text-base text-ink-soft" />
+              <T f="venueName" as="p" className="font-title text-4xl md:text-5xl text-brand" />
+              <T f="venueAddress" as="p" multiline className="font-details text-xl text-ink tracking-wide mt-2" />
+            </Group>
           </RevealOnScroll>
           <RevealOnScroll delay={300} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             {section.showCalendarButton && (
-              <button onClick={handleAddToCalendar} className="font-subtitle border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
+              <Movable as="button" kind="button" f="_btnCalendar" onClick={handleAddToCalendar} className="inline-flex items-center justify-center font-subtitle border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
                 <T f="calendarButtonText" />
-              </button>
+              </Movable>
             )}
             {useShow('rsvpButtonText') && (
-              <button onClick={() => scrollToSection('rsvp')} className={btnSolid}><T f="rsvpButtonText" /></button>
+              <LinkButton f="_btnRsvp" fallback="#rsvp" className={`inline-flex items-center justify-center ${btnSolid}`}><T f="rsvpButtonText" /></LinkButton>
             )}
           </RevealOnScroll>
           {section.showMap && section.mapQuery && (
             <RevealOnScroll delay={400}>
-              <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-paper z-10 border border-brand/20">
+              <Movable f="_map" kind="map" className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-paper z-10 border border-brand/20">
                 <iframe
                   src={`https://maps.google.com/maps?q=${encodeURIComponent(section.mapQuery)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                   title={`${section.venueName || 'Venue'} map`}
@@ -124,16 +157,16 @@ export function DetailsSection({ site }) {
                 />
                 <div className="absolute inset-0 bg-ink mix-blend-color opacity-30 pointer-events-none" />
                 <div className="absolute inset-0 bg-paper mix-blend-screen opacity-40 pointer-events-none" />
-              </div>
+              </Movable>
             </RevealOnScroll>
           )}
         </div>
         {(section.image || edit) && (
           <RevealOnScroll delay={200}>
-            <div className="relative h-[80vh] w-full bg-paper2 overflow-hidden rounded-sm z-10 shadow-lg border border-accent2/40">
+            <Movable f="image" className="relative h-[80vh] w-full bg-paper2 overflow-hidden rounded-sm z-10 shadow-lg border border-accent2/40">
               <CoverImage src={section.image} pos={section.imagePos} />
               <ImageButton f="image" className="top-4 right-4" />
-            </div>
+            </Movable>
           </RevealOnScroll>
         )}
       </div>
@@ -149,29 +182,36 @@ export function TravelSection() {
   const hotels = section.hotels || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className="max-w-5xl mx-auto text-center">
         <RevealOnScroll>
-          <H2 />
-          <div className="h-px w-24 bg-brand/40 mx-auto mb-16" />
+          <Group f="_head" className="mb-16">
+            <H2 />
+            <Divider />
+          </Group>
         </RevealOnScroll>
         <div className="grid md:grid-cols-2 gap-16 text-left">
           <RevealOnScroll delay={100} className="space-y-8">
-            <T f="leftTitle" as="h3" className="font-subtitle text-3xl md:text-4xl tracking-normal text-brand" />
-            <T f="leftIntro" as="p" multiline className="font-details text-lg text-ink leading-relaxed" />
+            <Group f="_left" className="space-y-8">
+              <T f="leftTitle" as="h3" className="font-subtitle text-3xl md:text-4xl tracking-normal text-brand" />
+              <T f="leftIntro" as="p" multiline className="font-details text-lg text-ink leading-relaxed" />
+            </Group>
             <ul className="space-y-6">
               {airports.map((_, i) => (
-                <li key={i} className="border-l-2 border-accent2 pl-4">
+                <Group as="li" key={i} f={itemPath('airports', i, '_item')} className="border-l-2 border-accent2 pl-4">
                   <T f={itemPath('airports', i, 'name')} className="font-subtitle text-lg tracking-normal block text-brand" />
                   <T f={itemPath('airports', i, 'note')} multiline className="font-details text-ink leading-relaxed block" />
-                </li>
+                </Group>
               ))}
             </ul>
           </RevealOnScroll>
           <RevealOnScroll delay={200} className="space-y-8">
-            <T f="rightTitle" as="h3" className="font-subtitle text-3xl md:text-4xl tracking-normal text-brand" />
-            <T f="rightIntro" as="p" multiline className="font-details text-lg text-ink leading-relaxed" />
+            <Group f="_right" className="space-y-8">
+              <T f="rightTitle" as="h3" className="font-subtitle text-3xl md:text-4xl tracking-normal text-brand" />
+              <T f="rightIntro" as="p" multiline className="font-details text-lg text-ink leading-relaxed" />
+            </Group>
             {hotels.map((h, i) => (
-              <div key={i} className="bg-paper2 p-8 shadow-sm border border-ink/15 space-y-4">
+              <Movable key={i} f={itemPath('hotels', i, '_box')} kind="box" className="bg-paper2 p-8 shadow-sm border border-ink/15 space-y-4">
                 <T f={itemPath('hotels', i, 'name')} as="p" className="font-subtitle text-2xl md:text-3xl tracking-normal text-brand" />
                 <T f={itemPath('hotels', i, 'address')} as="p" className="font-details text-lg text-ink" />
                 {(h.code || edit) && (
@@ -181,11 +221,11 @@ export function TravelSection() {
                   </div>
                 )}
                 {(safeUrl(h.url) || edit) && (h.buttonText || edit) && (
-                  <a href={safeUrl(h.url) || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 block w-full ${btnOutline}`}>
+                  <LinkButton f={itemPath('hotels', i, '_btn')} field={itemPath('hotels', i, 'url')} className={`mt-4 flex items-center justify-center w-full ${btnOutline}`}>
                     <T f={itemPath('hotels', i, 'buttonText')} />
-                  </a>
+                  </LinkButton>
                 )}
-              </div>
+              </Movable>
             ))}
           </RevealOnScroll>
         </div>
@@ -215,6 +255,7 @@ export function CountdownSection({ site }) {
   }, [target]);
   return (
     <section id={section.id} className="py-24 bg-brand text-paper relative z-20 shadow-inner">
+      <SectionBackground />
       <div className="max-w-4xl mx-auto px-6 text-center">
         <RevealOnScroll>
           <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-paper" />
@@ -241,23 +282,26 @@ export function CardsSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-5xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
-          <H2 />
-          <Divider />
-          <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          <Group f="_head">
+            <H2 />
+            <Divider />
+            <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          </Group>
         </RevealOnScroll>
         <EmptyListHint label="cards" />
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
           {items.map((item, i) => {
             const inner = (
-              <div className="border border-ink/10 bg-paper/80 h-full flex flex-col text-center hover:shadow-md transition-shadow overflow-hidden">
-                {item.image && <div className="relative h-48 overflow-hidden"><CoverImage src={item.image} pos={item.imagePos} /><ImageButton f={itemPath('items', i, 'image')} className="top-2 right-2" /></div>}
+              <Movable f={itemPath('items', i, '_card')} kind="box" className="border border-ink/10 bg-paper/80 h-full flex flex-col text-center hover:shadow-md transition-shadow overflow-hidden">
+                {item.image && <Movable f={itemPath('items', i, 'image')} className="relative h-48 overflow-hidden"><CoverImage src={item.image} pos={item.imagePos} /><ImageButton f={itemPath('items', i, 'image')} className="top-2 right-2" /></Movable>}
                 <div className="p-8 flex-1 flex flex-col justify-center space-y-4">
                   <T f={itemPath('items', i, 'title')} as="h4" className="font-subtitle text-xl md:text-2xl tracking-normal text-brand" />
                   <T f={itemPath('items', i, 'text')} as="p" multiline className="font-details text-ink leading-relaxed" />
                 </div>
-              </div>
+              </Movable>
             );
             return (
               <RevealOnScroll key={i} delay={(i % 3 + 1) * 100}>
@@ -278,17 +322,20 @@ export function ScheduleSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className="max-w-3xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
-          <H2 />
-          <Divider />
-          <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          <Group f="_head">
+            <H2 />
+            <Divider />
+            <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          </Group>
         </RevealOnScroll>
         <EmptyListHint label="events" />
         <ol className="relative border-l border-brand/30 ml-3 space-y-12">
           {items.map((ev, i) => (
             <RevealOnScroll key={i} delay={i * 100}>
-              <li className="pl-8 relative">
+              <Group as="li" f={itemPath('items', i, '_item')} className="pl-8 relative">
                 <span className="absolute -left-[7px] top-2 w-3 h-3 rounded-full bg-brand" />
                 <T f={itemPath('items', i, 'name')} as="h3" className="font-subtitle text-2xl md:text-3xl tracking-normal text-brand" />
                 <p className="font-subtitle text-xs md:text-sm tracking-[0.15em] uppercase text-ink-soft mt-2 flex flex-wrap gap-x-3">
@@ -300,7 +347,7 @@ export function ScheduleSection() {
                   <p className="font-details text-ink/80 italic mt-1">Attire: <T f={itemPath('items', i, 'attire')} placeholder="Attire" /></p>
                 )}
                 <T f={itemPath('items', i, 'description')} as="p" multiline className="font-details text-ink leading-relaxed mt-3" placeholder="Description" />
-              </li>
+              </Group>
             </RevealOnScroll>
           ))}
         </ol>
@@ -316,27 +363,30 @@ export function TextSection() {
   const hasImage = !!section.image || !!edit;
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className={`max-w-6xl mx-auto grid gap-16 items-center ${hasImage ? 'md:grid-cols-2' : 'max-w-3xl'}`}>
         <RevealOnScroll className={hasImage ? 'text-center md:text-left' : 'text-center'}>
-          <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm text-ink-soft mb-4" />
-          <H2 />
-          <div className={`h-px w-24 bg-brand/40 mb-10 ${hasImage ? 'mx-auto md:mx-0' : 'mx-auto'}`} />
-          <T f="body" as="div" multiline className="font-details text-xl text-ink leading-relaxed" />
+          <Group f="_text">
+            <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm text-ink-soft mb-4" />
+            <H2 />
+            <Divider center={!hasImage} className="mb-10" />
+            <T f="body" as="div" multiline className="font-details text-xl text-ink leading-relaxed" />
+          </Group>
           {(section.buttonText && safeUrl(section.buttonUrl)) || edit ? (
             <div className="mt-10">
-              <a href={safeUrl(section.buttonUrl) || '#'} target="_blank" rel="noopener noreferrer" className={`inline-block ${btnOutline}`}>
+              <LinkButton f="_btn" field="buttonUrl" className={`inline-flex items-center justify-center ${btnOutline}`}>
                 <T f="buttonText" placeholder="Button text (optional)" />
-              </a>
+              </LinkButton>
             </div>
           ) : null}
         </RevealOnScroll>
         {hasImage && (
           <RevealOnScroll delay={200}>
-            <div className="relative h-[60vh] w-full bg-paper2 overflow-hidden rounded-sm shadow-lg">
+            <Movable f="image" className="relative h-[60vh] w-full bg-paper2 overflow-hidden rounded-sm shadow-lg">
               <CoverImage src={section.image} pos={section.imagePos} />
               {!section.image && <p className="absolute inset-0 flex items-center justify-center font-sans text-sm text-ink/50">No photo — optional</p>}
               <ImageButton f="image" className="top-4 right-4" />
-            </div>
+            </Movable>
           </RevealOnScroll>
         )}
       </div>
@@ -350,21 +400,24 @@ export function GallerySection() {
   const photos = (section.photos || []).filter((p) => p.image);
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-6xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
-          <H2 />
-          <Divider />
-          <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          <Group f="_head">
+            <H2 />
+            <Divider />
+            <T f="intro" as="p" multiline className="mt-8 font-details text-ink text-lg max-w-2xl mx-auto" />
+          </Group>
         </RevealOnScroll>
         {photos.length === 0 && <EmptyListHint label="photos" />}
         <div className="columns-1 sm:columns-2 md:columns-3 gap-6 [&>*]:mb-6">
           {(section.photos || []).map((p, i) => p.image && (
             <RevealOnScroll key={i} delay={(i % 3) * 100}>
-              <figure className="break-inside-avoid relative">
+              <Movable f={itemPath('photos', i, 'image')} as="figure" className="break-inside-avoid relative">
                 <img src={p.image} alt={p.caption || ''} loading="lazy" className="w-full rounded-sm shadow-md" />
                 <ImageButton f={itemPath('photos', i, 'image')} className="top-3 right-3" />
                 <T f={itemPath('photos', i, 'caption')} as="figcaption" className="font-details text-sm text-ink/80 mt-2 text-center" placeholder="Caption (optional)" />
-              </figure>
+              </Movable>
             </RevealOnScroll>
           ))}
         </div>
@@ -376,25 +429,27 @@ export function GallerySection() {
 // ---------------------------------------------------------------- REGISTRY
 export function RegistrySection() {
   const { section } = useSection();
-  const edit = useEdit();
   const links = section.links || [];
   return (
     <section id={section.id} className="relative py-40 flex items-center justify-center overflow-hidden bg-paper2">
+      <SectionBackground />
       {section.image && <ParallaxBackground image={section.image} pos={section.imagePos} speed={0.3} />}
       <ImageButton f="image" className="bottom-6 right-6" />
-      <RevealOnScroll className="relative z-10 text-center max-w-2xl mx-6 bg-paper/90 backdrop-blur-sm p-12 md:p-24 border border-ink/10 shadow-2xl">
-        <H2 />
-        <T f="text" as="p" multiline className="font-details text-ink text-xl leading-relaxed mb-12" />
-        <div className="flex flex-col sm:flex-row flex-wrap gap-6 justify-center">
-          {links.map((l, i) => (
-            <a key={i} href={safeUrl(l.url) || '#'} target="_blank" rel="noopener noreferrer"
-              onClick={(e) => { if (!safeUrl(l.url)) e.preventDefault(); }}
-              className={`${btnOutline} py-4 ${!safeUrl(l.url) && !edit ? 'opacity-60 cursor-default' : ''}`}>
-              <T f={itemPath('links', i, 'label')} />
-            </a>
-          ))}
-        </div>
-        <EmptyListHint label="registry links" />
+      <RevealOnScroll className="relative z-10 max-w-2xl mx-6">
+        <Movable f="_panel" kind="box" className="text-center bg-paper/90 backdrop-blur-sm p-12 md:p-24 border border-ink/10 shadow-2xl">
+          <Group f="_head">
+            <H2 />
+            <T f="text" as="p" multiline className="font-details text-ink text-xl leading-relaxed mb-12" />
+          </Group>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-6 justify-center">
+            {links.map((l, i) => (
+              <LinkButton key={i} f={itemPath('links', i, '_btn')} field={itemPath('links', i, 'url')} className={`inline-flex items-center justify-center ${btnOutline} py-4`}>
+                <T f={itemPath('links', i, 'label')} />
+              </LinkButton>
+            ))}
+          </div>
+          <EmptyListHint label="registry links" />
+        </Movable>
       </RevealOnScroll>
     </section>
   );
@@ -406,19 +461,22 @@ export function FaqSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-3xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
-          <H2 />
-          <Divider />
+          <Group f="_head">
+            <H2 />
+            <Divider />
+          </Group>
         </RevealOnScroll>
         <EmptyListHint label="questions" />
         <div className="space-y-12">
           {items.map((_, i) => (
             <RevealOnScroll key={i} delay={Math.min(i, 4) * 100}>
-              <div className="text-center md:text-left border-b border-ink/10 pb-8">
+              <Group f={itemPath('items', i, '_item')} className="text-center md:text-left border-b border-ink/10 pb-8">
                 <T f={itemPath('items', i, 'q')} as="h4" className="font-subtitle text-xl md:text-2xl tracking-normal text-brand mb-3" />
                 <T f={itemPath('items', i, 'a')} as="p" multiline className="font-details text-ink text-lg leading-relaxed" />
-              </div>
+              </Group>
             </RevealOnScroll>
           ))}
         </div>

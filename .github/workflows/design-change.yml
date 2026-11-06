@@ -17,6 +17,8 @@ on:
       requested_by: { description: 'Who asked', required: true, type: string }
       branch: { description: 'design/* branch', required: true, type: string }
       follow_up: { description: '"true" to continue an existing branch', required: false, type: string, default: 'false' }
+      kind: { description: '"design" or "cleanup"', required: false, type: string, default: 'design' }
+      payload: { description: 'Clean up: gzip+base64 request from the editor', required: false, type: string, default: '' }
 
 permissions:
   contents: write
@@ -37,16 +39,24 @@ jobs:
       REQUESTED_BY: ${{ inputs.requested_by }}
       BRANCH: ${{ inputs.branch }}
       FOLLOW_UP: ${{ inputs.follow_up }}
+      KIND: ${{ inputs.kind }}
+      PAYLOAD: ${{ inputs.payload }}
+      # The branch the change is made from and merged back into: main, or the
+      # feature branch whose preview the request came from (for testing).
+      BASE_REF: ${{ github.ref_name }}
     steps:
       - name: Check inputs
         run: |
           [[ "$BRANCH" =~ ^design/[a-z0-9-]{4,48}$ ]] || { echo "::error title=Design change::Invalid branch name."; exit 1; }
           [[ "$REQUEST_ID" =~ ^[a-z0-9-]{4,40}$ ]] || { echo "::error title=Design change::Invalid request id."; exit 1; }
           [ ${#REQUEST} -le 4000 ] || { echo "::error title=Design change::Request is too long."; exit 1; }
+          [[ "$KIND" =~ ^(design|cleanup)$ ]] || { echo "::error title=Design change::Invalid kind."; exit 1; }
+          [[ "$BASE_REF" =~ ^(main|feature/[A-Za-z0-9._-]+)$ ]] || { echo "::error title=Design change::Design changes can only start from main or a feature branch."; exit 1; }
+          [ ${#PAYLOAD} -le 60000 ] || { echo "::error title=Design change::The clean-up request is too big. Pick fewer sections."; exit 1; }
 
+      # Checks out the branch the workflow was started on (BASE_REF).
       - uses: actions/checkout@v5
         with:
-          ref: main
           fetch-depth: 0
 
       - name: Use the request's branch
@@ -64,6 +74,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Prepare clean-up input
+        run: node .github/design/pending.mjs prepare
+
       - name: Ask Claude Code for the change
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -73,6 +86,10 @@ jobs:
             exit 1
           fi
           {
+            if [ "$KIND" = "cleanup" ]; then
+              echo "Clean up requested by $REQUESTED_BY. Follow the \"Clean up\" instructions in your system prompt (start by reading design-input.json)."
+              echo
+            fi
             if [ "$FOLLOW_UP" = "true" ]; then
               echo "This is a follow-up on an earlier design change on this branch. Adjust the existing change as asked:"
             else
@@ -84,8 +101,17 @@ jobs:
             echo "</request>"
           } > "$RUNNER_TEMP/request.txt"
 
+          SYSTEM_PROMPT="$(cat .github/design/prompt.md)"
+          EXTRA_ALLOWED=()
+          BUDGET=4
+          if [ "$KIND" = "cleanup" ]; then
+            SYSTEM_PROMPT="$SYSTEM_PROMPT"$'\n\n'"$(cat .github/design/cleanup.md)"
+            EXTRA_ALLOWED=("Edit(design-patch.json)")
+            BUDGET=8
+          fi
+
           npx -y @anthropic-ai/claude-code@2.1.307 -p "$(cat "$RUNNER_TEMP/request.txt")" \
-            --append-system-prompt "$(cat .github/design/prompt.md)" \
+            --append-system-prompt "$SYSTEM_PROMPT" \
             --model opus \
             --permission-mode dontAsk \
             --tools "Read,Glob,Grep,Edit,Write" \
@@ -93,10 +119,12 @@ jobs:
               "Edit(src/site/*.jsx)" "Edit(src/site/sections/*.jsx)" "Edit(src/components/*.jsx)" \
               "Edit(src/index.css)" "Edit(tailwind.config.js)" \
               "Edit(src/content/schema.js)" "Edit(src/content/defaultContent.js)" "Edit(src/content/theme.js)" \
+              "${EXTRA_ALLOWED[@]}" \
             --disallowedTools "Bash" "WebFetch" "WebSearch" \
-              "Edit(src/site/editing.jsx)" "Edit(src/site/PreviewFrame.jsx)" "Edit(src/site/PublicSite.jsx)" \
+              "Edit(src/site/editing.jsx)" "Edit(src/site/PreviewFrame.jsx)" "Edit(src/site/PublicSite.jsx)" "Edit(src/site/DragLayer.jsx)" \
               "Edit(src/site/sections/useRsvp.js)" "Edit(api/**)" "Edit(src/admin/**)" "Edit(.github/**)" \
-            --max-budget-usd 4 \
+              "Edit(src/content/designPending.json)" "Edit(src/content/designPatch.js)" \
+            --max-budget-usd "$BUDGET" \
             --no-session-persistence \
             --output-format json > "$RUNNER_TEMP/claude.json" || true
 
@@ -107,6 +135,9 @@ jobs:
             fs.writeFileSync(process.env.RUNNER_TEMP + "/summary.txt", String(r.result || "").trim());
           '
           echo "Claude said:"; cat "$RUNNER_TEMP/summary.txt"
+
+      - name: Record clean-up patch
+        run: node .github/design/pending.mjs finish
 
       - name: Stop if Claude declined or changed nothing
         run: |
@@ -123,7 +154,7 @@ jobs:
           fi
 
       - name: Scope guard
-        run: node .github/design/guard.mjs origin/main
+        run: node .github/design/guard.mjs "origin/$BASE_REF"
 
       - name: Build
         run: |

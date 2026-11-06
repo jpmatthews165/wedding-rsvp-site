@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Copy, Eye, EyeOff, ExternalLink, History, Loader2, Lock, Monitor,
-  MessageSquare, PanelLeft, Plus, Redo2, Settings2, Smartphone, Tablet, Trash2, Undo2, Upload,
+  MessageSquare, PanelLeft, Plus, Redo2, Settings2, Smartphone, Tablet, Trash2, Undo2, Upload, Wand2,
 } from 'lucide-react';
 import { db } from '../../firebase.js';
 import useAdminAuth from '../useAdminAuth.js';
@@ -12,12 +12,15 @@ import { DEFAULT_CONTENT } from '../../content/defaultContent.js';
 import { SECTION_TYPES, SITE_FIELDS, makeSection, newSectionId, normalizeContent, sectionLabel } from '../../content/schema.js';
 import { DRAFT_DOC, HISTORY_COLLECTION, PUBLISHED_DOC } from '../../content/useSiteContent.js';
 import { getAt, setAt, toPlain } from '../../content/paths.js';
+import { applyPatch } from '../../content/designPatch.js';
 import { Fields } from './FieldForm.jsx';
 import ImagePicker from './ImagePicker.jsx';
 import ImageAdjust from './ImageAdjust.jsx';
 import ThemePanel from './ThemePanel.jsx';
+import FormatBar from './FormatBar.jsx';
 import AssistantPanel from './AssistantPanel.jsx';
 import DesignPanel, { ClaudeTabs } from './DesignPanel.jsx';
+import CleanupDialog from './CleanupDialog.jsx';
 
 const DEVICES = {
   desktop: { width: '100%', icon: Monitor, label: 'Desktop' },
@@ -102,9 +105,13 @@ export function Editor({ auth, email, dryRun = false }) {
   const [device, setDevice] = useState('desktop');
   const [picker, setPicker] = useState(null);           // path of image field being changed
   const [adjusting, setAdjusting] = useState(null);     // path of image field being repositioned
+  const [selection, setSelection] = useState([]);       // [{ path, kind }] picked in the preview (Shift+click groups)
+  const [grid, setGrid] = useState({ show: false }); // grid size + buffer live in content.site
   const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
+  const [showCleanup, setShowCleanup] = useState(false);
+  const [claudeTab, setClaudeTab] = useState('quick'); // Ask Claude: quick | design
   const [publishing, setPublishing] = useState(false);
   const [mobilePane, setMobilePane] = useState('preview'); // edit | preview | ai (small screens)
   const iframeRef = useRef(null);
@@ -185,6 +192,8 @@ export function Editor({ auth, email, dryRun = false }) {
   // ---- editing helpers
   const { change, undo, redo, getPresent } = doc_;
   const setField = useCallback((path, value) => change((cur) => setAt(cur, path, value), path), [change]);
+  // Several edits as one Undo step (group moves, align, formatting a group).
+  const setMany = useCallback((changes) => change((cur) => changes.reduce((acc, c) => setAt(acc, c.path, c.value), cur), `many:${changes.map((c) => c.path).join('|')}`), [change]);
   const applyChange = useCallback((next, key) => change(next, key), [change]);
 
   // ---- preview iframe messaging
@@ -193,6 +202,13 @@ export function Editor({ auth, email, dryRun = false }) {
   }, []);
   useEffect(() => { if (frameReady.current && content) post({ type: 'content', content }); }, [content, post]);
   useEffect(() => { if (frameReady.current) post({ type: 'selected', selected }); }, [selected, post]);
+  useEffect(() => { if (frameReady.current) post({ type: 'selection', items: selection }); }, [selection, post]);
+  useEffect(() => { if (frameReady.current) post({ type: 'grid', grid }); }, [grid, post]);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && selection.length && !e.target.isContentEditable) setSelection([]); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selection]);
 
   const focusPath = useCallback((base) => {
     setSelected(base);
@@ -202,20 +218,25 @@ export function Editor({ auth, email, dryRun = false }) {
   useEffect(() => {
     const onMessage = (e) => {
       if (e.origin !== window.location.origin || e.data?.source !== 'wedding-preview') return;
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
       const m = e.data;
       if (m.type === 'ready') {
         frameReady.current = true;
         post({ type: 'content', content: getPresent() });
         post({ type: 'selected', selected });
+        post({ type: 'selection', items: selection });
+        post({ type: 'grid', grid });
       }
       if (m.type === 'edit') setField(m.path, m.value);
+      if (m.type === 'editMany' && Array.isArray(m.changes)) setMany(m.changes);
       if (m.type === 'select') setSelected(m.base);
       if (m.type === 'pickImage') setPicker(m.path);
       if (m.type === 'adjustImage') setAdjusting(m.path);
+      if (m.type === 'selection') setSelection(Array.isArray(m.items) ? m.items : []);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [post, setField, selected, getPresent]);
+  }, [post, setField, setMany, selected, selection, grid, getPresent]);
 
   // ---- keyboard shortcuts
   useEffect(() => {
@@ -381,6 +402,15 @@ export function Editor({ auth, email, dryRun = false }) {
           </button>
         ))}
       </div>
+      {selection.length ? (
+        <FormatBar
+          selection={selection} content={content} setMany={setMany} grid={grid} setGrid={setGrid}
+          onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])} onSelectItems={setSelection}
+          device={device} onPickImage={setPicker} onAdjustImage={setAdjusting}
+        />
+      ) : (
+        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click anything in the preview to format it, link it or drag it into place (click again to pick something inside a block). Drag over empty space or Shift+click to select several. Click empty space for the section background.</p>
+      )}
       <div className="flex-1 min-h-0 flex justify-center px-2 pb-2">
         <iframe
           ref={iframeRef}
@@ -405,7 +435,13 @@ export function Editor({ auth, email, dryRun = false }) {
       onFocusPath={focusPath}
     />
   );
-  const assistant = <ClaudeTabs quick={quickEdits} design={<DesignPanel getToken={auth.getToken} />} />;
+  // An approved clean-up: give the draft the content patch that goes with the new code
+  // (drops the hand-placed offsets it replaced), as one Undo step.
+  const applyDesignPatch = (patch) => {
+    const r = applyPatch(getPresent(), patch);
+    if (r.applied) applyChange(r.content, null);
+  };
+  const assistant = <ClaudeTabs tab={claudeTab} onTab={setClaudeTab} quick={quickEdits} design={<DesignPanel getToken={auth.getToken} onApplyPatch={applyDesignPatch} />} />;
 
 
   return (
@@ -429,6 +465,10 @@ export function Editor({ auth, email, dryRun = false }) {
         <IconBtn title="Undo (⌘Z)" disabled={!doc_.past.length} onClick={doc_.undo}><Undo2 className="w-4 h-4" /></IconBtn>
         <IconBtn title="Redo (⇧⌘Z)" disabled={!doc_.future.length} onClick={doc_.redo}><Redo2 className="w-4 h-4" /></IconBtn>
         <IconBtn title="Publish history" onClick={() => setShowHistory(true)}><History className="w-4 h-4" /></IconBtn>
+        <button type="button" onClick={() => setShowCleanup(true)} title="Claude tidies spacing and alignment and makes desktop and phone match"
+          className="flex items-center gap-1.5 rounded-md border border-[#6c5d84]/30 text-[#6c5d84] px-2.5 py-1.5 text-sm font-semibold hover:bg-[#6c5d84]/8">
+          <Wand2 className="w-4 h-4" /> <span className="hidden sm:inline">Clean up</span>
+        </button>
         <a href="/" target="_blank" rel="noopener noreferrer" title="Open live site" className="p-1.5 rounded text-[#333036]/70 hover:bg-[#333036]/5"><ExternalLink className="w-4 h-4" /></a>
         <button
           onClick={() => setShowPublish(true)}
@@ -475,6 +515,10 @@ export function Editor({ auth, email, dryRun = false }) {
           onChange={(pos) => setField(`${adjusting}Pos`, pos)}
           onClose={() => setAdjusting(null)}
         />
+      )}
+      {showCleanup && (
+        <CleanupDialog content={content} getContent={getPresent} selected={selected} getToken={auth.getToken}
+          onShowDesign={() => { setClaudeTab('design'); setMobilePane('ai'); }} onClose={() => setShowCleanup(false)} />
       )}
       {showPublish && (
         <Modal onClose={() => setShowPublish(false)} title="Publish your changes?">

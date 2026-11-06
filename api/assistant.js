@@ -14,6 +14,7 @@ import { readJsonBody } from './_lib.js';
 import { SECTION_TYPES, SITE_FIELDS } from '../src/content/schema.js';
 import { applyOperations } from '../src/content/paths.js';
 import { COLOR_FIELDS, BUILTIN_FONTS, GOOGLE_FONT_SUGGESTIONS, THEME_PRESETS, isHex } from '../src/content/theme.js';
+import { ALIGNS, COLOR_TOKENS, FILL_MODES, FONT_ROLES, OFFSET_LIMIT, RADIUS_MAX, SIZE_MAX, isFontFamily } from '../src/content/fieldStyle.js';
 
 export const config = { maxDuration: 60 };
 
@@ -47,6 +48,18 @@ const POSITION_TEXT = `Photo positions: any image field <key> can have a compani
   mobile is an optional { x, y, zoom } used on phones (phones crop the sides of tall photos, so y often has no effect there; zoom with a low y moves people down on phones).
   Change positions in small steps (about 5–10 at a time) and tell them they can fine-tune with the Reposition button.`;
 
+export const STYLE_TEXT = `Per-element formatting and position: each section may have "styles", an object keyed by the field path with dots replaced by underscores (e.g. "title", "items_0_q", "photos_2_image"). Each value is { font, size, color, align, bold, italic, x, y, mx, my }, all optional:
+  font: ${FONT_ROLES.map((r) => `"${r.key}" (${r.label})`).join(', ')} — follows the theme fonts. ff: a specific font family name instead (any Google Fonts family, e.g. "Playfair Display"); prefer font roles unless they ask for a particular font.
+  size: multiplier of the design's normal size, 0.5–3 (1 = normal; omit for normal).
+  color: a theme color name (${COLOR_TOKENS.map((t) => `"${t.key}"`).join(', ')}) — preferred, it follows the palette — or "#rrggbb".
+  align: ${ALIGNS.map((a) => `"${a}"`).join(', ')}. bold / italic: true or false.
+  x, y: desktop offset in px from the element's normal spot (positive = right / down); mx, my: the same for phones. Keep moves small (multiples of 8, usually under 120) so nothing leaves its section.
+  w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of text boxes/buttons/lines/boxes (theme color name or "#rrggbb"). fx: "glass" (frosted, see-through tint with blur) or "clear" (no background). op: transparency of the whole element 0–100. radius: corner rounding in px (photos, buttons, boxes, map).
+  Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", "_panel" (registry card), groups that move a block together ("_head" heading block, "_when", "_where", "_left", "_right", "_text", per item "items_N__item", "airports_N__item"), and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
+Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.
+Section height: sections.N.layout = { h, pb, d } (desktop minimum height px, bottom padding px, change vs the design's height px) and { mh, mpb } for phones. Prefer leaving these to the editor's drag handle; remove layout to reset.
+Section background: sections.N.bg = { color, image, imagePos, imageOpacity }, all optional. color is a theme color name or "#rrggbb" and becomes the section's background color; imageOpacity is 0–100 (a see-through photo shows the color under it). imagePos is like any photo position { x, y, zoom }. The cover (hero), registry and RSVP sections already have a background photo in their own "image" field: for those use "image"/"imagePos" for the photo and bg only for color and imageOpacity. Remove bg to go back to the design's background.`;
+
 const SCHEMA_TEXT = [
   'site (object):',
   describeFields(SITE_FIELDS),
@@ -54,6 +67,8 @@ const SCHEMA_TEXT = [
   THEME_TEXT,
   '',
   POSITION_TEXT,
+  '',
+  STYLE_TEXT,
   '',
   'sections (array, rendered top to bottom). Every section has: id (unique slug), type, visible (bool), showInNav (bool), navLabel (text).',
   'Section types:',
@@ -123,7 +138,7 @@ const EDIT_TOOL = {
 };
 
 // Applies the operations to a copy and checks the result is still a valid site.
-const validate = (content, operations) => {
+export const validate = (content, operations) => {
   const next = applyOperations(content, operations);
   if (!next?.site || !Array.isArray(next.sections)) throw new Error('site and sections must remain');
   const ids = new Set();
@@ -137,6 +152,52 @@ const validate = (content, operations) => {
   }
   for (const [k, f] of Object.entries(next.theme?.fonts || {})) {
     if (!['builtin', 'google', 'custom'].includes(f?.source) || typeof f.family !== 'string' || !f.family) throw new Error(`theme.fonts.${k} needs source and family`);
+  }
+  const STYLE_KEYS = ['font', 'ff', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'fx', 'op', 'radius', 'mAuto', 'si', 'pw', 'ew', 'pl'];
+  for (const sec of next.sections) {
+    if (sec.phoneOrder != null && (!Array.isArray(sec.phoneOrder) || sec.phoneOrder.length > 300 || sec.phoneOrder.some((k) => typeof k !== 'string'))) {
+      throw new Error(`sections "${sec.id}".phoneOrder must be a list of item keys`);
+    }
+    if (sec.layout != null) {
+      if (typeof sec.layout !== 'object' || Array.isArray(sec.layout)) throw new Error(`sections "${sec.id}".layout must be an object`);
+      for (const [k, v] of Object.entries(sec.layout)) {
+        if (v == null) continue;
+        if (!['h', 'pb', 'mh', 'mpb', 'd'].includes(k) || !Number.isFinite(v) || Math.abs(v) > 8000 || (k !== 'd' && v < 0)) throw new Error(`sections "${sec.id}".layout.${k} is not valid`);
+      }
+    }
+    if (sec.bg != null) {
+      if (typeof sec.bg !== 'object' || Array.isArray(sec.bg)) throw new Error(`sections "${sec.id}".bg must be an object`);
+      for (const [k, v] of Object.entries(sec.bg)) {
+        if (v === undefined) continue;
+        if (!['color', 'colorOpacity', 'image', 'imagePos', 'imageOpacity'].includes(k)) throw new Error(`sections "${sec.id}".bg.${k} is not a background property`);
+        if (k === 'color' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`bg.color must be a theme color name or "#rrggbb"`);
+        if ((k === 'colorOpacity' || k === 'imageOpacity') && !(Number.isFinite(v) && v >= 0 && v <= 100)) throw new Error(`bg.${k} must be 0–100`);
+        if (k === 'image' && (typeof v !== 'string' || !/^(https:\/\/|\/[^/])/.test(v))) throw new Error('bg.image must be a photo address');
+        if (k === 'imagePos' && (typeof v !== 'object' || Array.isArray(v))) throw new Error('bg.imagePos must be { x, y, zoom }');
+      }
+    }
+    if (sec.styles == null) continue;
+    if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);
+    for (const [key, st] of Object.entries(sec.styles)) {
+      if (st == null) continue;
+      if (typeof st !== 'object') throw new Error(`styles.${key} must be an object`);
+      for (const [prop, v] of Object.entries(st)) {
+        if (v == null) continue;
+        if (!STYLE_KEYS.includes(prop)) throw new Error(`styles.${key}.${prop} is not a style property`);
+        if (prop === 'font' && !FONT_ROLES.some((r) => r.key === v)) throw new Error(`styles.${key}.font must be one of ${FONT_ROLES.map((r) => r.key).join(', ')}`);
+        if (prop === 'color' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`styles.${key}.color must be a theme color name or "#rrggbb"`);
+        if (prop === 'align' && !ALIGNS.includes(v)) throw new Error(`styles.${key}.align must be one of ${ALIGNS.join(', ')}`);
+        if (prop === 'size' && !(v >= 0.5 && v <= 3)) throw new Error(`styles.${key}.size must be between 0.5 and 3`);
+        if ((prop === 'bold' || prop === 'italic') && typeof v !== 'boolean') throw new Error(`styles.${key}.${prop} must be true or false`);
+        if (['x', 'y', 'mx', 'my'].includes(prop) && !(Number.isFinite(v) && Math.abs(v) <= OFFSET_LIMIT)) throw new Error(`styles.${key}.${prop} must be a number of pixels`);
+        if (['w', 'h', 'mw', 'mh'].includes(prop) && !(Number.isFinite(v) && v >= 1 && v <= SIZE_MAX)) throw new Error(`styles.${key}.${prop} must be a size in pixels (1–${SIZE_MAX})`);
+        if (prop === 'fill' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`styles.${key}.fill must be a theme color name or "#rrggbb"`);
+        if (prop === 'ff' && !isFontFamily(v)) throw new Error(`styles.${key}.ff must be a font family name (letters, digits, spaces)`);
+        if (prop === 'fx' && !FILL_MODES.includes(v)) throw new Error(`styles.${key}.fx must be one of ${FILL_MODES.join(', ')}`);
+        if (prop === 'op' && !(Number.isFinite(v) && v >= 0 && v <= 100)) throw new Error(`styles.${key}.op must be 0–100`);
+        if (prop === 'radius' && !(Number.isFinite(v) && v >= 0 && v <= RADIUS_MAX)) throw new Error(`styles.${key}.radius must be 0–${RADIUS_MAX}`);
+      }
+    }
   }
   for (const [type, def] of Object.entries(SECTION_TYPES)) {
     if (def.unique && next.sections.filter((s) => s.type === type).length > 1) throw new Error(`only one "${type}" section is allowed`);

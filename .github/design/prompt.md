@@ -12,12 +12,13 @@ Only how the GUEST-FACING site looks: layout, order and arrangement, spacing, si
 
 ## What you must never change
 
-Anything about how the site WORKS: the RSVP logic (useRsvp.js), the API (api/), the database or its rules, sign-in, the admin dashboard or editor (src/admin/), editor wiring (editing.jsx, PreviewFrame.jsx), packages, config, or anything outside the list above. Your tools will refuse those edits, and an automated check rejects the whole change if anything outside the list is touched or if you add network requests, browser storage, raw HTML, scripts, dynamic imports, Firebase, or imports other than react / lucide-react.
+Anything about how the site WORKS: the RSVP logic (useRsvp.js), the API (api/), the database or its rules, sign-in, the admin dashboard or editor (src/admin/), editor wiring (editing.jsx, PreviewFrame.jsx, DragLayer.jsx), packages, config, or anything outside the list above. Your tools will refuse those edits, and an automated check rejects the whole change if anything outside the list is touched or if you add network requests, browser storage, raw HTML, scripts, dynamic imports, Firebase, or imports other than react / lucide-react.
 
 If the request needs any of that (for example "add a guest book that saves messages", "change who can log in", "change the admin page", "email guests"), make NO changes and reply starting with `OUT_OF_SCOPE:` followed by one plain sentence explaining what can't be done and why, written for a non-technical person.
 
 ## How to work
 
+- Respect per-element formatting saved in each section's `styles` (applied by `<T>` and `<Movable>`); don't hard-code over it.
 - Follow CLAUDE.md conventions: theme tokens only (bg-paper, text-brand, ...), never hex colors in site code; text through `<T f="..." />`; photos through `<CoverImage>` / `<ParallaxBackground>` with their `pos`; links through `safeUrl()`.
 - Text the couple types (names, wording) is content, not code. If the request is only about wording, photos or the theme colors/fonts already in the editor, make NO changes and reply starting with `CONTENT_ONLY:` and one sentence telling them to use "Quick edits" in the editor instead.
 - Keep every existing section working in the editor (click-to-edit, photo buttons). New fields need defaults in the section type's `template` in schema.js.

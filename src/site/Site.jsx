@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+
+// Editor-only drag overlay; loaded only inside the editor preview.
+const DragLayer = lazy(() => import('./DragLayer.jsx'));
 import { Menu, X } from 'lucide-react';
 import { EditContext, SectionContext, SectionFrame } from './editing.jsx';
 import { SECTION_TYPES, sectionLabel } from '../content/schema.js';
@@ -8,6 +11,10 @@ import {
 } from './sections/Sections.jsx';
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
+import { BUILTIN_FONTS } from '../content/theme.js';
+import { usePhoneLayout } from './phoneLayout.js';
+import { phoneBuffer, sectionBgProps, sectionLayoutProps, usedFontFamilies } from '../content/fieldStyle.js';
+
 
 const COMPONENTS = {
   hero: HeroSection, details: DetailsSection, travel: TravelSection, countdown: CountdownSection,
@@ -33,13 +40,21 @@ export default function Site({ content, edit = null }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Phones: place automatically-laid-out items from their desktop intent.
+  const rootRef = useRef(null);
+  usePhoneLayout(rootRef, phoneBuffer(site), [content]);
+
+  // The editor's callbacks plus site settings (grid size etc.) for editing tools.
+  const editValue = useMemo(() => (edit ? { ...edit, site } : null), [edit, site]);
+
   const navItems = sections.filter((s) => s.visible !== false && s.showInNav);
   const go = (id) => { scrollToSection(id); setIsMenuOpen(false); };
 
   return (
-    <EditContext.Provider value={edit}>
-      <ThemeStyle theme={content.theme} />
+    <EditContext.Provider value={editValue}>
+      <ThemeStyle theme={content.theme} extraFamilies={usedFontFamilies(content, BUILTIN_FONTS.map((f) => f.family))} />
       <div
+        ref={rootRef}
         className={`bg-paper text-ink font-details selection:bg-accent selection:text-paper overflow-x-hidden ${edit ? 'edit-mode' : ''}`}
         onClickCapture={(e) => {
           // In the editor, links shouldn't navigate away from the preview.
@@ -78,16 +93,28 @@ export default function Site({ content, edit = null }) {
           const Component = COMPONENTS[section.type];
           if (!Component) return null;
           const hidden = section.visible === false;
+          const lp = sectionLayoutProps(section.layout);
+          const bp = sectionBgProps(section);
           return (
             <SectionContext.Provider key={section.id} value={{ section, base: `sections.${i}` }}>
               <SectionFrame label={`${SECTION_TYPES[section.type].label}${hidden ? ' · hidden' : ''}`}>
-                <div className={hidden ? 'opacity-40' : ''}>
+                <div
+                  {...lp}
+                  {...bp}
+                  style={{ ...lp.style, ...bp.style }}
+                  className={hidden ? 'opacity-40' : ''}
+                  // Desktop reading order, used to re-flow this section on phones (phoneLayout.js).
+                  data-phone-order={Array.isArray(section.phoneOrder) && section.phoneOrder.length ? JSON.stringify(section.phoneOrder) : undefined}
+                  data-section-base={`sections.${i}`}
+                >
                   <Component site={site} />
                 </div>
               </SectionFrame>
             </SectionContext.Provider>
           );
         })}
+
+        {edit && <Suspense fallback={null}><DragLayer content={content} edit={edit} /></Suspense>}
 
         <footer className="py-12 bg-paper border-t border-brand/15 text-center relative z-20">
           <p className="font-title text-brand text-2xl">{site.footerText}</p>

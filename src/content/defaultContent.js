@@ -20,6 +20,10 @@ export const DEFAULT_CONTENT = {
     calendarTitle: 'Josh & Sneha Wedding',
     calendarLocation: "Lucien's Manor, 81 W White Horse Pike, Berlin, NJ 08009",
     footerText: 'J & S',
+    // Editor layout settings (format bar): snapping grid and the edge buffer no
+    // element may cross, in px. Phones use a smaller buffer (2/3, min 8 px).
+    layoutGrid: 16,
+    layoutBuffer: 24,
   },
   sections: [
     {

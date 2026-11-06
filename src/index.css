@@ -83,3 +83,58 @@
   opacity: 0; transition: opacity 0.2s; pointer-events: none;
 }
 .edit-section:hover .edit-section-badge, .edit-section-selected .edit-section-badge { opacity: 1; }
+
+/* ---------- Element positions (dragged in the editor; see content/fieldStyle.js) ----------
+   `translate` is separate from `transform`, so it combines with the reveal animation. */
+[data-moved] { translate: var(--dx, 0px) var(--dy, 0px); }
+@media (max-width: 600px) {
+  /* --ry: vertical shift from re-flowing the section into desktop reading order. */
+  [data-moved], [data-reflow] { translate: var(--mx, 0px) calc(var(--my, 0px) + var(--ry, 0px)); }
+}
+/* Sizes set by resizing in the editor. Desktop and phone are separate; phones never
+   grow wider than their container. */
+@media (min-width: 601px) {
+  [data-w] { width: var(--w) !important; max-width: none !important; }
+  [data-h] { height: var(--h) !important; }
+}
+@media (max-width: 600px) {
+  [data-mw] { width: var(--mw) !important; max-width: 100% !important; }
+  [data-mh] { height: var(--mh) !important; }
+}
+
+/* Section height, set by dragging a section's bottom edge in the editor.
+   Shortening only removes bottom padding; growing sets a minimum height. */
+@media (min-width: 601px) {
+  [data-sh] > section { height: auto !important; min-height: var(--sh) !important; padding-bottom: var(--spb) !important; }
+}
+@media (max-width: 600px) {
+  [data-msh] > section, [data-msh-auto] > section { height: auto !important; min-height: var(--msh) !important; padding-bottom: var(--mspb) !important; }
+}
+
+/* Editor: the element picked for formatting / dragging. */
+.edit-mode [data-el-selected] { outline: 2px solid #6c5d84; outline-offset: 6px; border-radius: 2px; }
+.edit-mode [data-el-kind="image"], .edit-mode [data-el-kind="line"], .edit-mode [data-el-kind="box"], .edit-mode [data-el-kind="map"] { cursor: pointer; }
+/* Blocks of items that move together (<Group>): a faint outline on hover. */
+.edit-mode [data-el-kind="group"]:not([data-el-selected]):hover { outline: 1px dashed rgba(108, 93, 132, 0.45); outline-offset: 6px; }
+.edit-mode [data-el-kind="group"] { cursor: pointer; }
+/* Text inside a button is locked to the button; the button's own cursor applies until it's selected. */
+.edit-mode [data-el-kind="button"]:not([data-el-selected]) [data-label] [data-editable] { cursor: pointer; }
+/* Lines are thin; give them a bigger click target in the editor. */
+.edit-mode [data-el-kind="line"] { position: relative; }
+.edit-mode [data-el-kind="line"]::after { content: ""; position: absolute; inset: -8px 0; }
+
+/* Editor: text, photos and boxes that link somewhere get a small link badge. */
+.edit-mode [data-linked] { position: relative; }
+.edit-mode [data-linked]::after {
+  content: "🔗"; position: absolute; top: -10px; right: -10px; font-size: 11px; line-height: 1;
+  background: #fff; border-radius: 999px; padding: 3px; box-shadow: 0 1px 3px rgba(0,0,0,.25); pointer-events: none;
+}
+
+/* A text or block with its own fill (or frosted glass) becomes a text box. */
+[data-tbox] { padding: clamp(4px, 0.3em, 14px) clamp(8px, 0.6em, 24px); }
+
+/* Section background (section.bg): own stacking context so the layer (z-index -1)
+   paints above the design's background but under the content. */
+[data-has-bg] > section { position: relative; isolation: isolate; }
+/* See-through cover/registry/RSVP photo. */
+[data-bgio] > section > [data-parallax] { opacity: var(--bgio); }
