@@ -14,7 +14,7 @@ export default function SectionBackground() {
   return (
     <div aria-hidden="true" data-section-bg="" className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
       {bg.color && (
-        <div className="absolute inset-0" style={{ backgroundColor: colorCss(bg.color), opacity: (bg.colorOpacity ?? 100) / 100 }} />
+        <div className="absolute inset-0" style={{ backgroundColor: colorCss(bg.color) }} />
       )}
       {image && (
         <div className="absolute inset-0 overflow-hidden" style={{ opacity: (bg.imageOpacity ?? 100) / 100 }}>

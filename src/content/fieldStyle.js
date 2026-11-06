@@ -209,8 +209,7 @@ export const sectionLayoutProps = (l) => {
 
 // ---- Section background (click empty space in a section in the editor).
 // Stored on the section as `bg`:
-//   color        — theme color name or "#rrggbb", painted over the design's own background
-//   colorOpacity — 0–100 (default 100)
+//   color        — theme color name or "#rrggbb": the section's background color
 //   image, imagePos — a background photo + its focal point/zoom (like any photo)
 //   imageOpacity — 0–100 (default 100); a see-through photo shows the color under it
 // Sections whose design already has a background photo (cover, registry, RSVP) keep
@@ -222,10 +221,7 @@ export const cleanSectionBg = (b) => {
   if (!b || typeof b !== 'object') return {};
   const out = {};
   if (colorCss(b.color)) out.color = b.color;
-  for (const k of ['colorOpacity', 'imageOpacity']) {
-    const v = num(b[k], 0, 100);
-    if (v !== undefined) out[k] = Math.round(v);
-  }
+  const io = num(b.imageOpacity, 0, 100); if (io !== undefined) out.imageOpacity = Math.round(io);
   if (typeof b.image === 'string' && b.image.trim()) out.image = b.image;
   if (b.imagePos && typeof b.imagePos === 'object') out.imagePos = b.imagePos;
   return out;

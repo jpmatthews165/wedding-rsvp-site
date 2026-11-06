@@ -122,7 +122,7 @@ function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onCl
   const imgPath = `${base}.${bgImageField(section.type)}`;
   const image = getAt(content, imgPath);
   const set = (key, value) => setMany([{ path: `${base}.bg.${key}`, value }]);
-  const changed = bg.color || bg.colorOpacity !== undefined || bg.imageOpacity !== undefined || (bgImageField(section.type) === 'bg.image' && image);
+  const changed = bg.color || bg.imageOpacity !== undefined || (bgImageField(section.type) === 'bg.image' && image);
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
       <span className="text-[11px] font-semibold text-[#333036]/60 px-1 max-w-[11rem] truncate" title="Section background">
@@ -131,7 +131,6 @@ function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onCl
       <Sep />
       <ColorMenu fill label="Background color" value={bg.color} themeColors={content.theme?.colors || {}}
         defaultLabel="Use the design's own background" onChange={(v) => set('color', v)} />
-      <Opacity label="Color opacity" short="Color" value={bg.colorOpacity ?? 100} disabled={!bg.color} onChange={(v) => set('colorOpacity', v === 100 ? undefined : v)} />
       <Sep />
       <button type="button" onClick={() => onPickImage(imgPath)}
         className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8">
@@ -143,7 +142,7 @@ function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onCl
             className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8">
             <Move className="w-4 h-4" /> Reposition & zoom
           </button>
-          <Opacity label="Photo opacity (the color shows through)" short="Photo" value={bg.imageOpacity ?? 100} onChange={(v) => set('imageOpacity', v === 100 ? undefined : v)} />
+          <Opacity label="Photo opacity (the background color shows through)" short="Photo" value={bg.imageOpacity ?? 100} onChange={(v) => set('imageOpacity', v === 100 ? undefined : v)} />
           <Btn title="Remove photo" onClick={() => setMany([{ path: imgPath, value: undefined }, { path: `${imgPath}Pos`, value: undefined }])}>
             <Trash2 className="w-4 h-4" />
           </Btn>
