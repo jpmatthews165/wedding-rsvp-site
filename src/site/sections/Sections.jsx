@@ -8,7 +8,10 @@ import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
 const btnOutline = 'font-subtitle border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
 const btnSolid = 'font-subtitle border border-brand bg-brand text-paper px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand-dark hover:border-brand-dark transition-colors shadow-sm';
-const Divider = ({ center = true }) => <div className={`h-px w-24 bg-brand/40 ${center ? 'mx-auto' : 'mx-auto md:mx-0'}`} />;
+// Decorative line under headings. Selectable/resizable in the editor (layout key "_divider").
+const Divider = ({ center = true, className = '' }) => (
+  <Movable f="_divider" kind="line" className={`h-px w-24 bg-brand/40 ${center ? 'mx-auto' : 'mx-auto md:mx-0'} ${className}`} />
+);
 const H2 = ({ f = 'title', className = '' }) => (
   <T f={f} as="h2" className={`font-title text-5xl md:text-7xl text-brand mb-6 ${className}`} placeholder="Heading" />
 );
@@ -44,9 +47,9 @@ export function HeroSection() {
       {useShow('buttonText') && (
         <div className="absolute bottom-12 w-full text-center z-20">
           <RevealOnScroll loadImmediately delay={300}>
-            <button onClick={() => scrollToSection('rsvp')} className="font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
+            <Movable as="button" kind="button" f="_btn" onClick={() => scrollToSection('rsvp')} className="inline-flex items-center justify-center font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
               <T f="buttonText" />
-            </button>
+            </Movable>
           </RevealOnScroll>
         </div>
       )}
@@ -105,17 +108,17 @@ export function DetailsSection({ site }) {
           </RevealOnScroll>
           <RevealOnScroll delay={300} className="pt-4 flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             {section.showCalendarButton && (
-              <button onClick={handleAddToCalendar} className="font-subtitle border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
+              <Movable as="button" kind="button" f="_btnCalendar" onClick={handleAddToCalendar} className="inline-flex items-center justify-center font-subtitle border border-brand/40 text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:border-brand hover:bg-brand/10 transition-colors">
                 <T f="calendarButtonText" />
-              </button>
+              </Movable>
             )}
             {useShow('rsvpButtonText') && (
-              <button onClick={() => scrollToSection('rsvp')} className={btnSolid}><T f="rsvpButtonText" /></button>
+              <Movable as="button" kind="button" f="_btnRsvp" onClick={() => scrollToSection('rsvp')} className={`inline-flex items-center justify-center ${btnSolid}`}><T f="rsvpButtonText" /></Movable>
             )}
           </RevealOnScroll>
           {section.showMap && section.mapQuery && (
             <RevealOnScroll delay={400}>
-              <div className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-paper z-10 border border-brand/20">
+              <Movable f="_map" kind="map" className="w-full h-64 mt-4 relative overflow-hidden rounded shadow-sm bg-paper z-10 border border-brand/20">
                 <iframe
                   src={`https://maps.google.com/maps?q=${encodeURIComponent(section.mapQuery)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                   title={`${section.venueName || 'Venue'} map`}
@@ -124,7 +127,7 @@ export function DetailsSection({ site }) {
                 />
                 <div className="absolute inset-0 bg-ink mix-blend-color opacity-30 pointer-events-none" />
                 <div className="absolute inset-0 bg-paper mix-blend-screen opacity-40 pointer-events-none" />
-              </div>
+              </Movable>
             </RevealOnScroll>
           )}
         </div>
@@ -152,7 +155,7 @@ export function TravelSection() {
       <div className="max-w-5xl mx-auto text-center">
         <RevealOnScroll>
           <H2 />
-          <div className="h-px w-24 bg-brand/40 mx-auto mb-16" />
+          <Divider className="mb-16" />
         </RevealOnScroll>
         <div className="grid md:grid-cols-2 gap-16 text-left">
           <RevealOnScroll delay={100} className="space-y-8">
@@ -171,7 +174,7 @@ export function TravelSection() {
             <T f="rightTitle" as="h3" className="font-subtitle text-3xl md:text-4xl tracking-normal text-brand" />
             <T f="rightIntro" as="p" multiline className="font-details text-lg text-ink leading-relaxed" />
             {hotels.map((h, i) => (
-              <div key={i} className="bg-paper2 p-8 shadow-sm border border-ink/15 space-y-4">
+              <Movable key={i} f={itemPath('hotels', i, '_box')} kind="box" className="bg-paper2 p-8 shadow-sm border border-ink/15 space-y-4">
                 <T f={itemPath('hotels', i, 'name')} as="p" className="font-subtitle text-2xl md:text-3xl tracking-normal text-brand" />
                 <T f={itemPath('hotels', i, 'address')} as="p" className="font-details text-lg text-ink" />
                 {(h.code || edit) && (
@@ -181,11 +184,11 @@ export function TravelSection() {
                   </div>
                 )}
                 {(safeUrl(h.url) || edit) && (h.buttonText || edit) && (
-                  <a href={safeUrl(h.url) || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 block w-full ${btnOutline}`}>
+                  <Movable as="a" kind="button" f={itemPath('hotels', i, '_btn')} href={safeUrl(h.url) || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center justify-center w-full ${btnOutline}`}>
                     <T f={itemPath('hotels', i, 'buttonText')} />
-                  </a>
+                  </Movable>
                 )}
-              </div>
+              </Movable>
             ))}
           </RevealOnScroll>
         </div>
@@ -251,13 +254,13 @@ export function CardsSection() {
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-8">
           {items.map((item, i) => {
             const inner = (
-              <div className="border border-ink/10 bg-paper/80 h-full flex flex-col text-center hover:shadow-md transition-shadow overflow-hidden">
-                {item.image && <div className="relative h-48 overflow-hidden"><CoverImage src={item.image} pos={item.imagePos} /><ImageButton f={itemPath('items', i, 'image')} className="top-2 right-2" /></div>}
+              <Movable f={itemPath('items', i, '_card')} kind="box" className="border border-ink/10 bg-paper/80 h-full flex flex-col text-center hover:shadow-md transition-shadow overflow-hidden">
+                {item.image && <Movable f={itemPath('items', i, 'image')} className="relative h-48 overflow-hidden"><CoverImage src={item.image} pos={item.imagePos} /><ImageButton f={itemPath('items', i, 'image')} className="top-2 right-2" /></Movable>}
                 <div className="p-8 flex-1 flex flex-col justify-center space-y-4">
                   <T f={itemPath('items', i, 'title')} as="h4" className="font-subtitle text-xl md:text-2xl tracking-normal text-brand" />
                   <T f={itemPath('items', i, 'text')} as="p" multiline className="font-details text-ink leading-relaxed" />
                 </div>
-              </div>
+              </Movable>
             );
             return (
               <RevealOnScroll key={i} delay={(i % 3 + 1) * 100}>
@@ -320,13 +323,13 @@ export function TextSection() {
         <RevealOnScroll className={hasImage ? 'text-center md:text-left' : 'text-center'}>
           <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm text-ink-soft mb-4" />
           <H2 />
-          <div className={`h-px w-24 bg-brand/40 mb-10 ${hasImage ? 'mx-auto md:mx-0' : 'mx-auto'}`} />
+          <Divider center={!hasImage} className="mb-10" />
           <T f="body" as="div" multiline className="font-details text-xl text-ink leading-relaxed" />
           {(section.buttonText && safeUrl(section.buttonUrl)) || edit ? (
             <div className="mt-10">
-              <a href={safeUrl(section.buttonUrl) || '#'} target="_blank" rel="noopener noreferrer" className={`inline-block ${btnOutline}`}>
+              <Movable as="a" kind="button" f="_btn" href={safeUrl(section.buttonUrl) || '#'} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center ${btnOutline}`}>
                 <T f="buttonText" placeholder="Button text (optional)" />
-              </a>
+              </Movable>
             </div>
           ) : null}
         </RevealOnScroll>
@@ -387,11 +390,11 @@ export function RegistrySection() {
         <T f="text" as="p" multiline className="font-details text-ink text-xl leading-relaxed mb-12" />
         <div className="flex flex-col sm:flex-row flex-wrap gap-6 justify-center">
           {links.map((l, i) => (
-            <a key={i} href={safeUrl(l.url) || '#'} target="_blank" rel="noopener noreferrer"
+            <Movable as="a" kind="button" f={itemPath('links', i, '_btn')} key={i} href={safeUrl(l.url) || '#'} target="_blank" rel="noopener noreferrer"
               onClick={(e) => { if (!safeUrl(l.url)) e.preventDefault(); }}
-              className={`${btnOutline} py-4 ${!safeUrl(l.url) && !edit ? 'opacity-60 cursor-default' : ''}`}>
+              className={`inline-flex items-center justify-center ${btnOutline} py-4 ${!safeUrl(l.url) && !edit ? 'opacity-60 cursor-default' : ''}`}>
               <T f={itemPath('links', i, 'label')} />
-            </a>
+            </Movable>
           ))}
         </div>
         <EmptyListHint label="registry links" />

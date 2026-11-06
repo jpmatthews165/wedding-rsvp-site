@@ -10,7 +10,10 @@ import { PHONE_QUERY } from './CoverImage.jsx';
 //   the same lines of other items and to the section's centre and margins; only the
 //   nearest guide per axis is drawn, and guides win over the grid,
 // - a snapping grid inside the section's margins,
-// - "align" commands from the editor's format bar.
+// - "align" commands from the editor's format bar,
+// - resize handles for a single selected item (text: width; lines: length and
+//   thickness; photos/buttons/boxes/map: all sides; photo corners keep proportions
+//   unless Shift is held). The opposite edge stays put while resizing.
 // Moving only changes each item's offset (CSS translate), never the layout around
 // it. Desktop and phone offsets are stored separately (x/y vs mx/my).
 
@@ -235,6 +238,89 @@ export default function DragLayer({ content, edit }) {
     }));
   });
 
+  // ---------------------------------------------------------------- resizing
+  const kind = selection.length === 1 ? selection[0].kind : null;
+  const HANDLES = {
+    text: ['w', 'e'],
+    line: ['w', 'e', 'n', 's'],
+  };
+  const handleDirs = kind ? (HANDLES[kind] || ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) : [];
+  const resizeRef = useRef(null);
+  const MIN = { text: [48, 0], line: [8, 1], button: [48, 24], box: [80, 60], map: [120, 80], image: [40, 40] };
+
+  const onResizeDown = (dir) => (e) => {
+    if (!box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const { el } = box.items[0];
+    const r0 = el.getBoundingClientRect();
+    const phone = isPhone();
+    resizeRef.current = {
+      dir, el, path: box.items[0].path, px: e.clientX, py: e.clientY,
+      start: currentOffset(el), r0, w0: r0.width, h0: r0.height,
+      section: el.closest('section').getBoundingClientRect(),
+      kw: phone ? 'mw' : 'w', kh: phone ? 'mh' : 'h', kx: phone ? 'mx' : 'x', ky: phone ? 'my' : 'y',
+      last: null,
+    };
+    setGuides({ dragging: true });
+  };
+  const onResizeMove = (e) => {
+    const d = resizeRef.current;
+    if (!d) return;
+    const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+    const sx = d.dir.includes('e') ? 1 : d.dir.includes('w') ? -1 : 0;
+    const sy = d.dir.includes('s') ? 1 : d.dir.includes('n') ? -1 : 0;
+    const fine = kind === 'line' ? 1 : step; // line thickness moves in 1px steps
+    let w = d.w0 + sx * Math.round((e.clientX - d.px) / step) * step;
+    let h = d.h0 + sy * Math.round((e.clientY - d.py) / (sy && kind === 'line' ? fine : step)) * (sy && kind === 'line' ? fine : step);
+    // Photo corners keep proportions unless Shift is held.
+    if (kind === 'image' && sx && sy && !e.shiftKey) {
+      const ratio = d.w0 / d.h0;
+      if (Math.abs(w - d.w0) / d.w0 > Math.abs(h - d.h0) / d.h0) h = w / ratio; else w = h * ratio;
+    }
+    const [minW, minH] = MIN[kind] || [32, 32];
+    w = Math.max(minW, Math.min(w, d.section.width - 2 * margin));
+    h = Math.max(minH || 1, h);
+    const setW = sx !== 0;
+    const setH = sy !== 0 && kind !== 'text';
+    const el = d.el;
+    if (setW) { el.setAttribute(`data-${d.kw}`, ''); el.style.setProperty(`--${d.kw}`, `${Math.round(w)}px`); }
+    if (setH) { el.setAttribute(`data-${d.kh}`, ''); el.style.setProperty(`--${d.kh}`, `${Math.round(h)}px`); }
+    // Pin the opposite edge: measure with the starting offset, then correct it.
+    applyLive(el, d.kx, d.ky, d.start.x, d.start.y);
+    const r = el.getBoundingClientRect();
+    let x = d.start.x, y = d.start.y;
+    if (sx === 1) x += d.r0.left - r.left;
+    else if (sx === -1) x += d.r0.right - r.right;
+    else x += (d.r0.left + d.r0.width / 2) - (r.left + r.width / 2);
+    if (sy === 1 || sy === 0) y += d.r0.top - r.top;
+    else y += d.r0.bottom - r.bottom;
+    x = Math.round(x); y = Math.round(y);
+    applyLive(el, d.kx, d.ky, x, y);
+    d.last = { w: setW ? Math.round(w) : undefined, h: setH ? Math.round(h) : undefined, x, y };
+  };
+  const onResizeUp = () => {
+    const d = resizeRef.current;
+    resizeRef.current = null;
+    setGuides(null);
+    if (!d?.last) return;
+    const sp = stylePathOf(d.path);
+    const cur = cleanStyle(getAt(content, sp));
+    const next = { ...cur, [d.kx]: d.last.x, [d.ky]: d.last.y };
+    if (d.last.w !== undefined) next[d.kw] = d.last.w;
+    if (d.last.h !== undefined) next[d.kh] = d.last.h;
+    edit.onPatchMany([{ path: sp, value: next }]);
+  };
+
+  // Safety net: finish a drag/resize even if the release happens off the handle.
+  useEffect(() => {
+    const up = () => { if (resizeRef.current) onResizeUp(); else if (dragRef.current) onPointerUp(); };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => { window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); };
+  });
+
   if (!box) return null;
   const { union: u, section } = box;
   const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
@@ -282,6 +368,27 @@ export default function DragLayer({ content, edit }) {
       >
         <GripVertical className="w-4 h-4" />{count > 1 && count}
       </button>
+      {count === 1 && handleDirs.map((dir) => {
+        const hx = dir.includes('w') ? u.left : dir.includes('e') ? u.right : u.left + u.width / 2;
+        const hy = dir.includes('n') ? u.top : dir.includes('s') ? u.bottom : u.top + u.height / 2;
+        const cursor = { n: 'ns', s: 'ns', e: 'ew', w: 'ew', ne: 'nesw', sw: 'nesw', nw: 'nwse', se: 'nwse' }[dir];
+        return (
+          <span
+            key={dir}
+            role="button"
+            aria-label={`Resize ${dir}`}
+            data-resize={dir}
+            onPointerDown={onResizeDown(dir)}
+            onPointerMove={onResizeMove}
+            onPointerUp={onResizeUp}
+            onPointerCancel={onResizeUp}
+            className="fixed z-[98] w-3 h-3 -ml-1.5 -mt-1.5 rounded-sm bg-white border-2 border-[#6c5d84] shadow touch-none"
+            // Stay mounted while dragging (removing the grabbed handle would lose the
+            // pointer); just hide them during a move.
+            style={{ left: hx, top: hy, cursor: `${cursor}-resize`, opacity: guides?.dragging && !resizeRef.current ? 0 : 1 }}
+          />
+        );
+      })}
     </>
   );
 }

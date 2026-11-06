@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { ImagePlus, Move } from 'lucide-react';
 import { getAt } from '../content/paths.js';
-import { boxCss, isMoved, styleKey, textCss } from '../content/fieldStyle.js';
+import { boxAttrs, boxCss, styleKey, textCss } from '../content/fieldStyle.js';
 
 // When the site renders inside the editor, EditContext carries callbacks back to it.
 // On the public site it's null and everything renders as plain text.
@@ -38,7 +38,7 @@ const useBoxProps = (f, kind, style) => {
   const path = `${base}.${f}`;
   return {
     style: { ...style, ...boxCss(st) },
-    'data-moved': isMoved(st) ? '' : undefined,
+    ...boxAttrs(st),
     'data-el': edit ? path : undefined,
     'data-el-kind': edit ? kind : undefined,
     'data-el-selected': edit && edit.selection?.some((x) => x.path === path) ? '' : undefined,
@@ -87,7 +87,7 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
       className={`${className} whitespace-pre-line`}
       {...box}
       // Shift+click adds/removes this text from the selection instead of editing it.
-      onPointerDown={(e) => { if (e.shiftKey) { e.preventDefault(); edit.onSelectEl(`${base}.${f}`, 'text', true); } }}
+      onPointerDown={(e) => { e.stopPropagation(); if (e.shiftKey) { e.preventDefault(); edit.onSelectEl(`${base}.${f}`, 'text', true); } }}
     >
       <span
         ref={ref}
@@ -113,23 +113,33 @@ export function T({ f, as: Tag = 'span', className = '', multiline = false, plac
   );
 }
 
-// A foreground photo (or any block) that can be selected and dragged in the editor.
+// Any block that can be selected, moved and resized in the editor: photos, buttons,
+// divider lines, boxes (cards), the map.  `kind` decides which handles it gets.
 // <Movable f="image" className="relative h-[80vh] …">…</Movable>
-export function Movable({ f, as: Tag = 'div', className = '', style, children }) {
+// <Movable as="button" kind="button" f="_btn" onClick={…} className="…">…</Movable>
+// Fields starting with "_" (e.g. "_btn", "_divider", "_map") are layout-only keys:
+// they hold formatting/position in `styles` but no content.
+export function Movable({ f, kind = 'image', as: Tag = 'div', className = '', style, children, ...rest }) {
   const edit = useEdit();
   const { base } = useSection();
-  const box = useBoxProps(f, 'image', style);
+  const box = useBoxProps(f, kind, style);
   return (
     <Tag
       className={className}
+      {...rest}
       {...box}
       onPointerDown={edit ? (e) => {
-        if (e.target.closest('button') || e.target.closest('[data-editable]')) return;
+        // Clicks on editable text or on the editor's own photo buttons aren't for this box.
+        const btn = e.target.closest('button');
+        if ((btn && btn !== e.currentTarget) || e.target.closest('[data-editable]')) return;
+        e.stopPropagation(); // innermost box wins (e.g. a photo inside a card)
         edit.onSelect(base);
-        edit.onSelectEl(`${base}.${f}`, 'image', e.shiftKey);
-      } : undefined}
+        edit.onSelectEl(`${base}.${f}`, kind, e.shiftKey);
+      } : rest.onPointerDown}
     >
       {children}
+      {/* The map is an embedded page that swallows clicks; cover it while editing. */}
+      {edit && kind === 'map' && <span aria-hidden="true" className="absolute inset-0 z-[5]" />}
     </Tag>
   );
 }

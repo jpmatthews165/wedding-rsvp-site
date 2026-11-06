@@ -400,7 +400,7 @@ export function Editor({ auth, email, dryRun = false }) {
       {selection.length ? (
         <FormatBar
           selection={selection} content={content} setMany={setMany} grid={grid} setGrid={setGrid}
-          onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])}
+          onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])} onSelectItems={setSelection}
         />
       ) : (
         <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several.</p>

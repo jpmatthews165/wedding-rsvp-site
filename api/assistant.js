@@ -14,7 +14,7 @@ import { readJsonBody } from './_lib.js';
 import { SECTION_TYPES, SITE_FIELDS } from '../src/content/schema.js';
 import { applyOperations } from '../src/content/paths.js';
 import { COLOR_FIELDS, BUILTIN_FONTS, GOOGLE_FONT_SUGGESTIONS, THEME_PRESETS, isHex } from '../src/content/theme.js';
-import { ALIGNS, COLOR_TOKENS, FONT_ROLES, OFFSET_LIMIT } from '../src/content/fieldStyle.js';
+import { ALIGNS, COLOR_TOKENS, FONT_ROLES, OFFSET_LIMIT, RADIUS_MAX, SIZE_MAX } from '../src/content/fieldStyle.js';
 
 export const config = { maxDuration: 60 };
 
@@ -54,6 +54,8 @@ const STYLE_TEXT = `Per-element formatting and position: each section may have "
   color: a theme color name (${COLOR_TOKENS.map((t) => `"${t.key}"`).join(', ')}) — preferred, it follows the palette — or "#rrggbb".
   align: ${ALIGNS.map((a) => `"${a}"`).join(', ')}. bold / italic: true or false.
   x, y: desktop offset in px from the element's normal spot (positive = right / down); mx, my: the same for phones. Keep moves small (multiples of 8, usually under 120) so nothing leaves its section.
+  w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of buttons/lines/boxes (theme color name or "#rrggbb"). radius: corner rounding in px (photos, buttons, boxes, map).
+  Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
 Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.`;
 
 const SCHEMA_TEXT = [
@@ -149,7 +151,7 @@ const validate = (content, operations) => {
   for (const [k, f] of Object.entries(next.theme?.fonts || {})) {
     if (!['builtin', 'google', 'custom'].includes(f?.source) || typeof f.family !== 'string' || !f.family) throw new Error(`theme.fonts.${k} needs source and family`);
   }
-  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my'];
+  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'radius'];
   for (const sec of next.sections) {
     if (sec.styles == null) continue;
     if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);
@@ -165,6 +167,9 @@ const validate = (content, operations) => {
         if (prop === 'size' && !(v >= 0.5 && v <= 3)) throw new Error(`styles.${key}.size must be between 0.5 and 3`);
         if ((prop === 'bold' || prop === 'italic') && typeof v !== 'boolean') throw new Error(`styles.${key}.${prop} must be true or false`);
         if (['x', 'y', 'mx', 'my'].includes(prop) && !(Number.isFinite(v) && Math.abs(v) <= OFFSET_LIMIT)) throw new Error(`styles.${key}.${prop} must be a number of pixels`);
+        if (['w', 'h', 'mw', 'mh'].includes(prop) && !(Number.isFinite(v) && v >= 1 && v <= SIZE_MAX)) throw new Error(`styles.${key}.${prop} must be a size in pixels (1–${SIZE_MAX})`);
+        if (prop === 'fill' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`styles.${key}.fill must be a theme color name or "#rrggbb"`);
+        if (prop === 'radius' && !(Number.isFinite(v) && v >= 0 && v <= RADIUS_MAX)) throw new Error(`styles.${key}.radius must be 0–${RADIUS_MAX}`);
       }
     }
   }

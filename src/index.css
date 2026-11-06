@@ -90,7 +90,20 @@
 @media (max-width: 600px) {
   [data-moved] { translate: var(--mx, 0px) var(--my, 0px); }
 }
+/* Sizes set by resizing in the editor. Desktop and phone are separate; phones never
+   grow wider than their container. */
+@media (min-width: 601px) {
+  [data-w] { width: var(--w) !important; max-width: none !important; }
+  [data-h] { height: var(--h) !important; }
+}
+@media (max-width: 600px) {
+  [data-mw] { width: var(--mw) !important; max-width: 100% !important; }
+  [data-mh] { height: var(--mh) !important; }
+}
 
 /* Editor: the element picked for formatting / dragging. */
 .edit-mode [data-el-selected] { outline: 2px solid #6c5d84; outline-offset: 6px; border-radius: 2px; }
-.edit-mode [data-el-kind="image"] { cursor: pointer; }
+.edit-mode [data-el-kind="image"], .edit-mode [data-el-kind="line"], .edit-mode [data-el-kind="box"], .edit-mode [data-el-kind="map"] { cursor: pointer; }
+/* Lines are thin; give them a bigger click target in the editor. */
+.edit-mode [data-el-kind="line"] { position: relative; }
+.edit-mode [data-el-kind="line"]::after { content: ""; position: absolute; inset: -8px 0; }

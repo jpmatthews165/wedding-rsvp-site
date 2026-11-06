@@ -12,6 +12,9 @@
 // color — a theme color name (follows the palette) or a "#rrggbb" hex
 // x, y  — desktop offset in px from the element's normal spot (snapped to a grid)
 // mx,my — phone offset (screens up to 600 px); phones ignore desktop offsets
+// w, h  — desktop size in px (text boxes: width only); mw, mh — phone size
+// fill  — background color for buttons, lines and boxes (token or hex)
+// radius— corner rounding in px for photos, buttons, boxes and the map
 //
 // Everything is validated here before it reaches CSS, so bad values are ignored.
 import { isHex } from './theme.js';
@@ -37,6 +40,9 @@ export const COLOR_TOKENS = [
 
 export const ALIGNS = ['left', 'center', 'right', 'justify'];
 export const OFFSET_LIMIT = 2000;
+export const SIZE_MIN = 1;
+export const SIZE_MAX = 4000;
+export const RADIUS_MAX = 400;
 
 const num = (v, lo, hi) => (Number.isFinite(+v) ? Math.min(hi, Math.max(lo, +v)) : undefined);
 
@@ -61,6 +67,12 @@ export const cleanStyle = (s) => {
     const v = num(s[k], -OFFSET_LIMIT, OFFSET_LIMIT);
     if (v) out[k] = Math.round(v);
   }
+  for (const k of ['w', 'h', 'mw', 'mh']) {
+    const v = num(s[k], SIZE_MIN, SIZE_MAX);
+    if (v) out[k] = Math.round(v);
+  }
+  if (colorCss(s.fill)) out.fill = s.fill;
+  const radius = num(s.radius, 0, RADIUS_MAX); if (radius !== undefined) out.radius = Math.round(radius);
   return out;
 };
 
@@ -76,20 +88,38 @@ export const textCss = (s) => {
   };
 };
 
-// CSS for the element's box: alignment and drag offsets (see [data-moved] in index.css).
+// CSS for the element's box: alignment, fill, rounding, drag offsets and size
+// (see [data-moved] / [data-w] … in index.css).
 export const boxCss = (s) => {
   const st = cleanStyle(s);
   const css = { textAlign: st.align };
+  if (st.fill) css.backgroundColor = colorCss(st.fill);
+  if (st.radius !== undefined) css.borderRadius = `${st.radius}px`;
   if (st.x || st.y || st.mx || st.my) {
     css['--dx'] = `${st.x || 0}px`;
     css['--dy'] = `${st.y || 0}px`;
     css['--mx'] = `${st.mx || 0}px`;
     css['--my'] = `${st.my || 0}px`;
   }
+  for (const k of ['w', 'h', 'mw', 'mh']) if (st[k]) css[`--${k}`] = `${st[k]}px`;
   return css;
+};
+
+// data-* attributes that switch the position/size CSS on for this element.
+export const boxAttrs = (s) => {
+  const st = cleanStyle(s);
+  const flag = (on) => (on ? '' : undefined);
+  return {
+    'data-moved': flag(st.x || st.y || st.mx || st.my),
+    'data-w': flag(st.w), 'data-h': flag(st.h), 'data-mw': flag(st.mw), 'data-mh': flag(st.mh),
+  };
 };
 
 export const isMoved = (s) => {
   const st = cleanStyle(s);
   return !!(st.x || st.y || st.mx || st.my);
+};
+export const isSized = (s) => {
+  const st = cleanStyle(s);
+  return !!(st.w || st.h || st.mw || st.mh);
 };

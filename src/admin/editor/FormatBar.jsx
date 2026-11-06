@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignJustify, AlignLeft,
-  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, Italic, Minus, Pipette, Plus, RotateCcw, X,
+  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, Italic, Maximize2, Minus, PaintBucket, Pipette, Plus,
+  RotateCcw, SquareDashedMousePointer, X,
 } from 'lucide-react';
 import { getAt } from '../../content/paths.js';
 import { COLOR_TOKENS, FONT_ROLES, cleanStyle, styleKey } from '../../content/fieldStyle.js';
@@ -36,7 +37,7 @@ const Btn = ({ active, title, onClick, children, disabled }) => (
 );
 const Sep = () => <span className="w-px h-6 bg-[#333036]/12 mx-1 shrink-0" />;
 
-function ColorMenu({ value, themeColors, onChange }) {
+function ColorMenu({ value, themeColors, onChange, label = 'Text color', fill = false }) {
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState('');
   const ref = useRef(null);
@@ -60,9 +61,11 @@ function ColorMenu({ value, themeColors, onChange }) {
 
   return (
     <div className="relative" ref={ref}>
-      <button type="button" title="Text color" aria-label="Text color" onClick={() => setOpen(!open)}
+      <button type="button" title={label} aria-label={label} onClick={() => setOpen(!open)}
         className="h-8 px-1.5 inline-flex items-center gap-1 rounded-md hover:bg-[#333036]/8">
-        <span className="text-sm font-semibold text-[#333036] leading-none">A</span>
+        {fill
+          ? <PaintBucket className="w-4 h-4 text-[#333036]" />
+          : <span className="text-sm font-semibold text-[#333036] leading-none">A</span>}
         <span className="w-4 h-1.5 rounded-sm border border-[#333036]/20" style={{ background: shown || 'transparent' }} />
       </button>
       {open && (
@@ -91,14 +94,14 @@ function ColorMenu({ value, themeColors, onChange }) {
               )}
             </div>
           </div>
-          <button type="button" onClick={() => { onChange(undefined); setOpen(false); }} className="text-xs text-[#6c5d84] hover:underline">Use the design's default color</button>
+          <button type="button" onClick={() => { onChange(undefined); setOpen(false); }} className="text-xs text-[#6c5d84] hover:underline">{fill ? 'Use the design\'s default fill' : 'Use the design\'s default color'}</button>
         </div>
       )}
     </div>
   );
 }
 
-export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose }) {
+export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose, onSelectItems }) {
   const items = selection.map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
   if (!items.length) return null;
   const texts = items.filter((i) => i.kind === 'text');
@@ -109,6 +112,18 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
   const isText = texts.length > 0;
   const sizeIdx = SIZES.indexOf(SIZES.reduce((a, b) => (Math.abs(b - (st.size || 1)) < Math.abs(a - (st.size || 1)) ? b : a)));
   const moved = items.some((i) => { const x = cleanStyle(getAt(content, i.stylePath)); return x.x || x.y || x.mx || x.my; });
+  const boxes = items.filter((i) => i.kind !== 'text');
+  const fillable = boxes.filter((i) => ['button', 'line', 'box'].includes(i.kind));
+  const roundable = boxes.filter((i) => ['image', 'button', 'box', 'map'].includes(i.kind));
+  const primaryBox = boxes[boxes.length - 1];
+  const boxStyle = primaryBox ? cleanStyle(getAt(content, primaryBox.stylePath)) : {};
+  const setOn = (list, key, value) => setMany(list.map((i) => ({ path: `${i.stylePath}.${key}`, value })));
+  const sized = items.some((i) => { const x = cleanStyle(getAt(content, i.stylePath)); return x.w || x.h || x.mw || x.mh; });
+  const resetSizes = () => setMany(items.map((i) => {
+    const x = cleanStyle(getAt(content, i.stylePath));
+    return { path: i.stylePath, value: { ...x, w: undefined, h: undefined, mw: undefined, mh: undefined } };
+  }));
+  const parent = items.length === 1 && items[0].kind === 'text' ? selection[0].parent : null;
   const resetPositions = () => setMany(items.map((i) => {
     const x = cleanStyle(getAt(content, i.stylePath));
     return { path: i.stylePath, value: { ...x, x: undefined, y: undefined, mx: undefined, my: undefined } };
@@ -116,7 +131,7 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
   const pretty = (f) => f.replace(/\.(\d+)\./, ' $1 · ').replace(/([A-Z])/g, ' $1').toLowerCase();
   const label = items.length > 1
     ? `${items.length} selected`
-    : `${primary.kind === 'text' ? 'Text' : 'Photo'} · ${pretty(primary.f)}`;
+    : `${{ text: 'Text', image: 'Photo', button: 'Button', line: 'Line', box: 'Box', map: 'Map' }[primary.kind] || 'Item'} · ${pretty(primary.f.replace(/^_|\._/g, (m) => (m === '_' ? '' : '.')))}`;
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
@@ -151,6 +166,27 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
           <Sep />
         </>
       )}
+      {parent && (
+        <>
+          <Btn title={`Select the ${parent.kind === 'button' ? 'button' : parent.kind === 'box' ? 'box' : 'item'} around this text`} onClick={() => onSelectItems([parent])}>
+            <SquareDashedMousePointer className="w-4 h-4" />
+          </Btn>
+          <Sep />
+        </>
+      )}
+      {fillable.length > 0 && (
+        <ColorMenu fill label={fillable.length > 1 ? 'Fill color (all selected)' : 'Fill color'} value={boxStyle.fill}
+          themeColors={content.theme?.colors || {}} onChange={(v) => setOn(fillable, 'fill', v)} />
+      )}
+      {roundable.length > 0 && (
+        <label className="h-8 inline-flex items-center gap-1.5 px-1.5 text-xs text-[#333036]" title="Corner rounding">
+          <span className="w-3.5 h-3.5 border-2 border-[#333036]/70 rounded-tl-md border-r-0 border-b-0" />
+          <input type="range" min="0" max="48" step="2" value={boxStyle.radius ?? 0} aria-label="Corner rounding"
+            onChange={(e) => setOn(roundable, 'radius', +e.target.value)} className="w-20 accent-[#6c5d84]" />
+        </label>
+      )}
+      {(fillable.length > 0 || roundable.length > 0) && <Sep />}
+      <Btn title={items.length > 1 ? 'Reset sizes' : 'Reset size'} disabled={!sized} onClick={resetSizes}><Maximize2 className="w-3.5 h-3.5" /></Btn>
       <Btn title={items.length > 1 ? 'Put all back in their original spots' : 'Put back in its original spot'} disabled={!moved} onClick={resetPositions}>
         <RotateCcw className="w-3.5 h-3.5" />
       </Btn>

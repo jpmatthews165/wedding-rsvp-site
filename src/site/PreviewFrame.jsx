@@ -43,10 +43,15 @@ export default function PreviewFrame() {
       alignRequest,
       // additive (Shift+click): toggle in the group; otherwise select just this one.
       onSelectEl: (path, kind, additive) => {
+        // For text inside a button/box, tell the editor about the box around it
+        // so it can offer "Select the box around this".
+        const el = document.querySelector(`[data-el="${CSS.escape(path)}"]`);
+        const parentEl = el?.parentElement?.closest('[data-el]');
+        const parent = parentEl ? { path: parentEl.getAttribute('data-el'), kind: parentEl.getAttribute('data-el-kind') } : null;
         setSelection((cur) => {
           let next;
-          if (additive) next = cur.some((x) => x.path === path) ? cur.filter((x) => x.path !== path) : [...cur, { path, kind }];
-          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind }];
+          if (additive) next = cur.some((x) => x.path === path) ? cur.filter((x) => x.path !== path) : [...cur, { path, kind, parent }];
+          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, parent }];
           if (next !== cur) send({ type: 'selection', items: next });
           return next;
         });
