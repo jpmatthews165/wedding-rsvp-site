@@ -16,6 +16,7 @@ React 19 + Vite + Tailwind 3, Firebase (Firestore + Google Auth), Vercel (hostin
 - **API** (`api/`, Vercel functions, Firebase Admin SDK):
   - `lookup.js`, `household.js` and `rsvp.js`: guest RSVP. Guests never read Firestore directly.
   - `assistant.js`: the "Ask Claude" companion (Anthropic SDK, `claude-opus-5-5`). It returns edit *operations* (`set`/`insert`/`remove`/`move` on dotted paths) that the editor applies to the draft.
+  - `cleanup.js`: "Clean up" in the editor (`src/admin/editor/CleanupDialog.jsx`). The editor measures the chosen sections at 1280 px and 390 px in hidden `/preview-frame?measure=…` iframes (`measurer.js` ↔ `src/site/measure.js`), Claude returns `set`/`remove` operations limited to those sections' `styles`/`layout` (no text, colors, fonts, photos or backgrounds; enforced by `check`), then the editor recomputes the automatic phone layout (`phoneOrder`, `pl`, `mw`/`mh`) from the new desktop layout and applies everything as one Undo step.
   - `upload.js`: Vercel Blob upload tokens for editor photos.
   - `design.js`: "Design changes" from the editor: starts the GitHub workflow, reports status/preview, approves (merges) or discards. Requests are stored in Firestore `designRequests`.
   - Admin endpoints verify the Firebase ID token and the email list in `src/adminConfig.js`.

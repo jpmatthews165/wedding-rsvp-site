@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import {
   ArrowLeft, ChevronDown, ChevronUp, Copy, Eye, EyeOff, ExternalLink, History, Loader2, Lock, Monitor,
-  MessageSquare, PanelLeft, Plus, Redo2, Settings2, Smartphone, Tablet, Trash2, Undo2, Upload,
+  MessageSquare, PanelLeft, Plus, Redo2, Settings2, Smartphone, Tablet, Trash2, Undo2, Upload, Wand2,
 } from 'lucide-react';
 import { db } from '../../firebase.js';
 import useAdminAuth from '../useAdminAuth.js';
@@ -19,6 +19,7 @@ import ThemePanel from './ThemePanel.jsx';
 import FormatBar from './FormatBar.jsx';
 import AssistantPanel from './AssistantPanel.jsx';
 import DesignPanel, { ClaudeTabs } from './DesignPanel.jsx';
+import CleanupDialog from './CleanupDialog.jsx';
 
 const DEVICES = {
   desktop: { width: '100%', icon: Monitor, label: 'Desktop' },
@@ -108,6 +109,7 @@ export function Editor({ auth, email, dryRun = false }) {
   const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
+  const [showCleanup, setShowCleanup] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [mobilePane, setMobilePane] = useState('preview'); // edit | preview | ai (small screens)
   const iframeRef = useRef(null);
@@ -214,6 +216,7 @@ export function Editor({ auth, email, dryRun = false }) {
   useEffect(() => {
     const onMessage = (e) => {
       if (e.origin !== window.location.origin || e.data?.source !== 'wedding-preview') return;
+      if (iframeRef.current && e.source !== iframeRef.current.contentWindow) return;
       const m = e.data;
       if (m.type === 'ready') {
         frameReady.current = true;
@@ -454,6 +457,10 @@ export function Editor({ auth, email, dryRun = false }) {
         <IconBtn title="Undo (⌘Z)" disabled={!doc_.past.length} onClick={doc_.undo}><Undo2 className="w-4 h-4" /></IconBtn>
         <IconBtn title="Redo (⇧⌘Z)" disabled={!doc_.future.length} onClick={doc_.redo}><Redo2 className="w-4 h-4" /></IconBtn>
         <IconBtn title="Publish history" onClick={() => setShowHistory(true)}><History className="w-4 h-4" /></IconBtn>
+        <button type="button" onClick={() => setShowCleanup(true)} title="Claude tidies spacing and alignment and makes desktop and phone match"
+          className="flex items-center gap-1.5 rounded-md border border-[#6c5d84]/30 text-[#6c5d84] px-2.5 py-1.5 text-sm font-semibold hover:bg-[#6c5d84]/8">
+          <Wand2 className="w-4 h-4" /> <span className="hidden sm:inline">Clean up</span>
+        </button>
         <a href="/" target="_blank" rel="noopener noreferrer" title="Open live site" className="p-1.5 rounded text-[#333036]/70 hover:bg-[#333036]/5"><ExternalLink className="w-4 h-4" /></a>
         <button
           onClick={() => setShowPublish(true)}
@@ -500,6 +507,10 @@ export function Editor({ auth, email, dryRun = false }) {
           onChange={(pos) => setField(`${adjusting}Pos`, pos)}
           onClose={() => setAdjusting(null)}
         />
+      )}
+      {showCleanup && (
+        <CleanupDialog content={content} getContent={getPresent} selected={selected} applyChange={applyChange}
+          getToken={auth.getToken} onFocus={focusPath} onClose={() => setShowCleanup(false)} />
       )}
       {showPublish && (
         <Modal onClose={() => setShowPublish(false)} title="Publish your changes?">

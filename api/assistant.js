@@ -48,7 +48,7 @@ const POSITION_TEXT = `Photo positions: any image field <key> can have a compani
   mobile is an optional { x, y, zoom } used on phones (phones crop the sides of tall photos, so y often has no effect there; zoom with a low y moves people down on phones).
   Change positions in small steps (about 5–10 at a time) and tell them they can fine-tune with the Reposition button.`;
 
-const STYLE_TEXT = `Per-element formatting and position: each section may have "styles", an object keyed by the field path with dots replaced by underscores (e.g. "title", "items_0_q", "photos_2_image"). Each value is { font, size, color, align, bold, italic, x, y, mx, my }, all optional:
+export const STYLE_TEXT = `Per-element formatting and position: each section may have "styles", an object keyed by the field path with dots replaced by underscores (e.g. "title", "items_0_q", "photos_2_image"). Each value is { font, size, color, align, bold, italic, x, y, mx, my }, all optional:
   font: ${FONT_ROLES.map((r) => `"${r.key}" (${r.label})`).join(', ')} — follows the theme fonts.
   size: multiplier of the design's normal size, 0.5–3 (1 = normal; omit for normal).
   color: a theme color name (${COLOR_TOKENS.map((t) => `"${t.key}"`).join(', ')}) — preferred, it follows the palette — or "#rrggbb".
@@ -138,7 +138,7 @@ const EDIT_TOOL = {
 };
 
 // Applies the operations to a copy and checks the result is still a valid site.
-const validate = (content, operations) => {
+export const validate = (content, operations) => {
   const next = applyOperations(content, operations);
   if (!next?.site || !Array.isArray(next.sections)) throw new Error('site and sections must remain');
   const ids = new Set();
