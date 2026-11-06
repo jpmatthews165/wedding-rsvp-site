@@ -30,7 +30,7 @@ function LinkButton({ f, field, fallback, className = '', children }) {
         if (edit || !href) { e.preventDefault(); return; }
         if (internal) { e.preventDefault(); scrollToSection(href.slice(1)); }
       }}
-      className={`${className} ${!href && !edit ? 'opacity-60 cursor-default' : ''}`}>
+      className={`${className} ${!href && !edit ? `cursor-default ${field ? 'opacity-60' : ''}` : ''}`}>
       {children}
     </Movable>
   );

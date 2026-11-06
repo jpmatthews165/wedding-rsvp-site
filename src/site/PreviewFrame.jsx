@@ -89,15 +89,15 @@ export default function PreviewFrame() {
       alignRequest,
       // additive (Shift+click): toggle in the group; otherwise select just this one.
       onSelectEl: (path, kind, additive) => {
-        const { parent, label } = describe(path, kind);
+        const info = describe(path, kind); // parent, label, link
         setSelection((cur) => {
           let next;
           if (additive) {
             // A section background can't be grouped with items.
             const base = kind === 'section' ? [] : cur.filter((x) => x.kind !== 'section');
-            next = base.some((x) => x.path === path) ? base.filter((x) => x.path !== path) : [...base, { path, kind, parent, label }];
+            next = base.some((x) => x.path === path) ? base.filter((x) => x.path !== path) : [...base, { path, kind, ...info }];
           }
-          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, parent, label }];
+          else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, ...info }];
           if (next !== cur) send({ type: 'selection', items: next });
           return next;
         });

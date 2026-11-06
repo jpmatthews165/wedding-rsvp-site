@@ -241,7 +241,9 @@ export const useLink = (f, field, fallback = '') => {
   const edit = useEdit();
   const { section, base } = useSection();
   const path = field || `linkTo.${styleKey(f)}`;
-  const href = safeUrl(getAt(section, path) || fallback);
+  // undefined = the design's default; "" = deliberately no link.
+  const raw = getAt(section, path);
+  const href = safeUrl(raw === undefined || raw === null ? fallback : raw);
   return {
     href,
     internal: href.startsWith('#'),

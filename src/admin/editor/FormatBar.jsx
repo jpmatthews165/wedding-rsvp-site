@@ -151,7 +151,7 @@ function LinkMenu({ link, content, setMany, what = 'button' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const saved = getAt(content, link.path);
-  const value = safeUrl(saved || link.fallback);
+  const value = safeUrl(saved ?? link.fallback); // "" saved = no link on purpose
   const sections = content.sections.map((s) => ({ id: s.id, label: sectionLabel(s), hidden: s.visible === false }));
   const target = value.startsWith('#') ? sections.find((s) => s.id === value.slice(1)) : null;
   const [mode, setMode] = useState(value && !value.startsWith('#') ? 'url' : 'section');
@@ -163,8 +163,9 @@ function LinkMenu({ link, content, setMany, what = 'button' }) {
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
   const save = (v) => setMany([{ path: link.path, value: v }]);
-  // Links kept in section.linkTo are removed; a type's own link field is emptied.
-  const remove = () => save(link.path.includes('.linkTo.') ? undefined : '');
+  // A link kept in section.linkTo is deleted (or set to "" to override a default);
+  // a type's own link field is emptied.
+  const remove = () => save(link.path.includes('.linkTo.') && !link.fallback ? undefined : '');
   const saveUrl = () => { const u = safeUrl(url); if (u && !u.startsWith('#')) save(u); };
   const shown = target ? `Link: ${target.label}` : value.startsWith('#') ? 'Link: missing section' : value ? `Link: ${value.replace(/^https?:\/\/(www\.)?/, '').slice(0, 22)}` : 'Add link';
   return (
@@ -193,9 +194,10 @@ function LinkMenu({ link, content, setMany, what = 'button' }) {
             </div>
           )}
           <div className="flex justify-between pt-1 border-t border-[#333036]/10">
-            {link.fallback
-              ? <button type="button" onClick={() => save(undefined)} className="text-[#6c5d84] hover:underline">Back to the default ({sections.find((s) => `#${s.id}` === link.fallback)?.label || link.fallback})</button>
-              : value ? <button type="button" onClick={remove} className="text-[#a3401f] hover:underline">Remove link</button> : <span className="text-[#333036]/50">No link yet</span>}
+            {value ? <button type="button" onClick={remove} className="text-[#a3401f] hover:underline">Remove link</button> : <span className="text-[#333036]/50">No link</span>}
+            {link.fallback && saved !== undefined && (
+              <button type="button" onClick={() => save(undefined)} className="text-[#6c5d84] hover:underline">Back to the default ({sections.find((s) => `#${s.id}` === link.fallback)?.label || link.fallback})</button>
+            )}
           </div>
           <p className="text-[10px] text-[#333036]/50">Links don't respond to clicks while editing; on the live site they go here.</p>
         </div>
