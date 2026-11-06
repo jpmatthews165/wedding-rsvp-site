@@ -92,7 +92,12 @@ export default function Site({ content, edit = null }) {
           return (
             <SectionContext.Provider key={section.id} value={{ section, base: `sections.${i}` }}>
               <SectionFrame label={`${SECTION_TYPES[section.type].label}${hidden ? ' · hidden' : ''}`}>
-                <div className={hidden ? 'opacity-40' : ''}>
+                <div
+                  className={hidden ? 'opacity-40' : ''}
+                  // Desktop reading order, used to re-flow this section on phones (phoneLayout.js).
+                  data-phone-order={Array.isArray(section.phoneOrder) && section.phoneOrder.length ? JSON.stringify(section.phoneOrder) : undefined}
+                  data-section-base={`sections.${i}`}
+                >
                   <Component site={site} />
                 </div>
               </SectionFrame>

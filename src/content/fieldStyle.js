@@ -121,7 +121,7 @@ export const boxAttrs = (s) => {
     'data-moved': flag(st.x || st.y || st.mx || st.my),
     'data-w': flag(st.w), 'data-h': flag(st.h), 'data-mw': flag(st.mw), 'data-mh': flag(st.mh),
     // Automatic phone layout: where it sits horizontally (resolved on phones).
-    'data-pl': st.mAuto !== false && (st.x || st.my) ? String((st.pl ?? 500) / 1000) : undefined,
+    'data-pl': st.mAuto !== false && st.x ? String((st.pl ?? 500) / 1000) : undefined,
   };
 };
 
@@ -148,7 +148,7 @@ export const phoneBuffer = (site) => Math.max(8, Math.round(layoutBuffer(site) *
 // - horizontal: the same *relative placement* within the free space (0 = at the
 //   left buffer, 1 = at the right buffer), resolved on the phone itself by
 //   src/site/phoneLayout.js (so it never crosses the buffer);
-// - vertical: half the desktop move, capped.
+// - vertical: from the section's desktop reading order (re-flow on the phone).
 // `m` = desktop measurements at the edit: sectionInner, parentWidth, width (item
 // width) and placement (0–1). Phone reference width: 390 px.
 export const PHONE_REF_WIDTH = 390;
@@ -166,6 +166,7 @@ export const approximatePhone = (st, kind, m, site) => {
   }
   // Horizontal position is not guessed here: the phone works it out from the saved
   // placement (`pl`) against its real layout — see src/site/phoneLayout.js.
-  if (st.y) out.my = Math.round(Math.max(-160, Math.min(160, st.y * 0.5))) || undefined;
+  // Vertical position comes from re-flowing the section in desktop reading order
+  // (phoneOrder + src/site/phoneLayout.js), so desktop y moves aren't copied.
   return out;
 };

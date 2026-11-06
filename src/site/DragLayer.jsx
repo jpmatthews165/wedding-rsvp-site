@@ -3,6 +3,7 @@ import { GripVertical } from 'lucide-react';
 import { getAt } from '../content/paths.js';
 import { approximatePhone, cleanStyle, layoutBuffer, layoutGrid, phoneBuffer, styleKey } from '../content/fieldStyle.js';
 import { PHONE_QUERY } from './CoverImage.jsx';
+import { readingOrder } from '../content/readingOrder.js';
 
 // Editor-only overlay (inside the preview iframe) for the selected element(s):
 // - a drag handle that moves the whole selection (Shift+click builds a group),
@@ -31,11 +32,49 @@ const findEl = (path) => document.querySelector(`[data-el="${CSS.escape(path)}"]
 const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
 const deviceKeys = () => (isPhone() ? ['mx', 'my'] : ['x', 'y']);
 
-// Where the element actually sits right now (its applied translate).
+// Where the element actually sits right now (its applied translate), minus the
+// phone re-flow shift (--ry), which isn't the user's own offset.
 const currentOffset = (el) => {
-  const [tx = '0', ty = '0'] = (getComputedStyle(el).translate || '').split(' ');
-  const x = parseFloat(tx); const y = parseFloat(ty);
+  const cs = getComputedStyle(el);
+  const [tx = '0', ty = '0'] = (cs.translate || '').split(' ');
+  const x = parseFloat(tx);
+  const y = parseFloat(ty) - (isPhone() ? parseFloat(cs.getPropertyValue('--ry')) || 0 : 0);
   return { x: Number.isFinite(x) ? Math.round(x) : 0, y: Number.isFinite(y) ? Math.round(y) : 0 };
+};
+
+// Layout box ignoring CSS transforms (e.g. the fade-in animation's offset).
+const layoutBox = (el) => {
+  let x = 0, y = 0, n = el;
+  while (n) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+  return { left: x, top: y, width: el.offsetWidth, height: el.offsetHeight };
+};
+
+// A section's top-level items (not nested inside another selectable item).
+const topLevelItems = (sectionEl) => [...sectionEl.querySelectorAll('[data-el]')].filter((el) => {
+  const outer = el.parentElement?.closest('[data-el]');
+  return !outer || !sectionEl.contains(outer);
+});
+
+// Desktop reading order of a section, for re-flowing it on phones.
+// pending: Map(path -> { x, y }) for moves being saved but not yet drawn.
+const sectionOrderChange = (sectionEl, pending) => {
+  const items = topLevelItems(sectionEl);
+  const base = /^(sections\.\d+)\./.exec(items[0]?.getAttribute('data-el') || '')?.[1];
+  if (!base) return null;
+  const rects = items.map((el) => {
+    const path = el.getAttribute('data-el');
+    const box = layoutBox(el);
+    const now = currentOffset(el);
+    const p = pending.get(path);
+    return {
+      key: path.slice(base.length + 1),
+      left: box.left + (p ? p.x : now.x),
+      top: box.top + (p ? p.y : now.y),
+      width: box.width,
+      height: box.height,
+    };
+  });
+  return { path: `${base}.phoneOrder`, value: readingOrder(rects) };
 };
 
 const union = (rects) => {
@@ -188,6 +227,12 @@ export default function DragLayer({ content, edit }) {
       const sp = stylePathOf(path);
       return sp && { path: sp, value: withPhone(path, { ...cleanStyle(getAt(content, sp)), [kx]: x, [ky]: y }) };
     }).filter(Boolean);
+    if (!isPhone()) {
+      // Desktop layout changed: record each affected section's reading order.
+      const pending = new Map(entries.map((e) => [e.path, { x: e.x, y: e.y }]));
+      const sections = new Set(entries.map((e) => findEl(e.path)?.closest('section')).filter(Boolean));
+      sections.forEach((sec) => { const c = sectionOrderChange(sec, pending); if (c) changes.push(c); });
+    }
     if (changes.length) edit.onPatchMany(changes);
   };
 
@@ -344,7 +389,12 @@ export default function DragLayer({ content, edit }) {
     const next = { ...cur, [d.kx]: d.last.x, [d.ky]: d.last.y };
     if (d.last.w !== undefined) next[d.kw] = d.last.w;
     if (d.last.h !== undefined) next[d.kh] = d.last.h;
-    edit.onPatchMany([{ path: sp, value: withPhone(d.path, next) }]);
+    const changes = [{ path: sp, value: withPhone(d.path, next) }];
+    if (!isPhone()) {
+      const c = sectionOrderChange(d.el.closest('section'), new Map([[d.path, { x: d.last.x, y: d.last.y }]]));
+      if (c) changes.push(c);
+    }
+    edit.onPatchMany(changes);
   };
 
   // Safety net: finish a drag/resize even if the release happens off the handle.

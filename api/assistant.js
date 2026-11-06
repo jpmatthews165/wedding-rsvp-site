@@ -153,6 +153,9 @@ const validate = (content, operations) => {
   }
   const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'radius', 'mAuto', 'si', 'pw', 'ew', 'pl'];
   for (const sec of next.sections) {
+    if (sec.phoneOrder != null && (!Array.isArray(sec.phoneOrder) || sec.phoneOrder.length > 300 || sec.phoneOrder.some((k) => typeof k !== 'string'))) {
+      throw new Error(`sections "${sec.id}".phoneOrder must be a list of item keys`);
+    }
     if (sec.styles == null) continue;
     if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);
     for (const [key, st] of Object.entries(sec.styles)) {

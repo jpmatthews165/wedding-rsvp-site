@@ -88,7 +88,8 @@
    `translate` is separate from `transform`, so it combines with the reveal animation. */
 [data-moved] { translate: var(--dx, 0px) var(--dy, 0px); }
 @media (max-width: 600px) {
-  [data-moved] { translate: var(--mx, 0px) var(--my, 0px); }
+  /* --ry: vertical shift from re-flowing the section into desktop reading order. */
+  [data-moved], [data-reflow] { translate: var(--mx, 0px) calc(var(--my, 0px) + var(--ry, 0px)); }
 }
 /* Sizes set by resizing in the editor. Desktop and phone are separate; phones never
    grow wider than their container. */
