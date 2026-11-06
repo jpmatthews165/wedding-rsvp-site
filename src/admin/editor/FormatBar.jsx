@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignJustify, AlignLeft,
   AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, Italic, Maximize2, Minus, PaintBucket, Pipette, Plus,
-  RotateCcw, SquareDashedMousePointer, X,
+  RotateCcw, Smartphone, SquareDashedMousePointer, X,
 } from 'lucide-react';
 import { getAt } from '../../content/paths.js';
-import { COLOR_TOKENS, FONT_ROLES, cleanStyle, styleKey } from '../../content/fieldStyle.js';
+import { BUFFER_SIZES, COLOR_TOKENS, FONT_ROLES, GRID_SIZES, approximatePhone, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
 import { isHex } from '../../content/theme.js';
 
 // Format bar above the preview: formats or positions the element clicked in the preview.
@@ -16,13 +16,14 @@ import { isHex } from '../../content/theme.js';
 const SIZES = [0.5, 0.6, 0.75, 0.85, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3];
 const ALIGN_ICONS = { left: AlignLeft, center: AlignCenter, right: AlignRight, justify: AlignJustify };
 // Lining items up with each other (moves them; separate from text alignment).
+// One item: aligned to its section, inside the buffer. Several: to each other.
 const ARRANGE = [
-  ['left', AlignStartVertical, 'Align left edges'],
-  ['center', AlignCenterVertical, 'Align centers'],
-  ['right', AlignEndVertical, 'Align right edges'],
-  ['top', AlignStartHorizontal, 'Align top edges'],
-  ['middle', AlignCenterHorizontal, 'Align middles'],
-  ['bottom', AlignEndHorizontal, 'Align bottom edges'],
+  ['left', AlignStartVertical, 'Align left edges', 'Move to the left of the section'],
+  ['center', AlignCenterVertical, 'Align centers', 'Center in the section'],
+  ['right', AlignEndVertical, 'Align right edges', 'Move to the right of the section'],
+  ['top', AlignStartHorizontal, 'Align top edges', 'Move to the top of the section'],
+  ['middle', AlignCenterHorizontal, 'Align middles', 'Center vertically in the section'],
+  ['bottom', AlignEndHorizontal, 'Align bottom edges', 'Move to the bottom of the section'],
 ];
 const parse = (path) => {
   const m = /^(sections\.\d+)\.(.+)$/.exec(path || '');
@@ -101,7 +102,7 @@ function ColorMenu({ value, themeColors, onChange, label = 'Text color', fill = 
   );
 }
 
-export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose, onSelectItems }) {
+export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose, onSelectItems, device }) {
   const items = selection.map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
   if (!items.length) return null;
   const texts = items.filter((i) => i.kind === 'text');
@@ -124,6 +125,15 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
     return { path: i.stylePath, value: { ...x, w: undefined, h: undefined, mw: undefined, mh: undefined } };
   }));
   const parent = items.length === 1 && items[0].kind === 'text' ? selection[0].parent : null;
+  const phone = device === 'phone';
+  const handTuned = items.filter((i) => cleanStyle(getAt(content, i.stylePath)).mAuto === false);
+  // Phone back to automatic: redo the close approximation from the desktop values.
+  const resetPhone = () => setMany(handTuned.map((i) => {
+    const x = cleanStyle(getAt(content, i.stylePath));
+    const auto = x.si && x.pw ? approximatePhone(x, i.kind, { sectionInner: x.si, parentWidth: x.pw, width: x.ew, placement: (x.pl ?? 500) / 1000 }, content.site) : {};
+    return { path: i.stylePath, value: { ...x, mx: undefined, my: undefined, mw: undefined, mh: undefined, mAuto: undefined, ...auto } };
+  }));
+  const single = items.length === 1;
   const resetPositions = () => setMany(items.map((i) => {
     const x = cleanStyle(getAt(content, i.stylePath));
     return { path: i.stylePath, value: { ...x, x: undefined, y: undefined, mx: undefined, my: undefined } };
@@ -158,14 +168,10 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
           <Sep />
         </>
       )}
-      {items.length > 1 && (
-        <>
-          {ARRANGE.map(([mode, Icon, title]) => (
-            <Btn key={mode} title={title} onClick={() => onAlign(mode)}><Icon className="w-4 h-4" /></Btn>
-          ))}
-          <Sep />
-        </>
-      )}
+      {ARRANGE.map(([mode, Icon, title, singleTitle]) => (
+        <Btn key={mode} title={single ? singleTitle : title} onClick={() => onAlign(mode)}><Icon className="w-4 h-4" /></Btn>
+      ))}
+      <Sep />
       {parent && (
         <>
           <Btn title={`Select the ${parent.kind === 'button' ? 'button' : parent.kind === 'box' ? 'box' : 'item'} around this text`} onClick={() => onSelectItems([parent])}>
@@ -191,10 +197,27 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
         <RotateCcw className="w-3.5 h-3.5" />
       </Btn>
       <Btn title={grid.show ? 'Hide grid' : 'Show grid'} active={grid.show} onClick={() => setGrid({ ...grid, show: !grid.show })}><Grid3x3 className="w-4 h-4" /></Btn>
-      <select aria-label="Grid size" value={grid.step} onChange={(e) => setGrid({ ...grid, step: +e.target.value })}
+      <select aria-label="Grid size" title="Snapping grid (saved for everyone)" value={layoutGrid(content.site)}
+        onChange={(e) => setMany([{ path: 'site.layoutGrid', value: +e.target.value }])}
         className="h-8 rounded-md border border-[#333036]/15 bg-white px-1 text-xs">
-        {[16, 24, 32, 48].map((n) => <option key={n} value={n}>{n}px grid</option>)}
+        {GRID_SIZES.map((n) => <option key={n} value={n}>{n}px grid</option>)}
       </select>
+      <select aria-label="Edge buffer" title="How close to a section's edge anything may go (phones use 2/3 of this)" value={layoutBuffer(content.site)}
+        onChange={(e) => setMany([{ path: 'site.layoutBuffer', value: +e.target.value }])}
+        className="h-8 rounded-md border border-[#333036]/15 bg-white px-1 text-xs">
+        {BUFFER_SIZES.map((n) => <option key={n} value={n}>{n}px buffer</option>)}
+      </select>
+      {phone && (
+        <>
+          <Sep />
+          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6c5d84] px-1" title="Changes here only affect phones and stop the automatic phone layout for these items.">
+            <Smartphone className="w-3.5 h-3.5" /> Phone layout
+          </span>
+          <Btn title="Reset phone layout to automatic (follows desktop)" disabled={!handTuned.length} onClick={resetPhone}>
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Btn>
+        </>
+      )}
       <span className="flex-1" />
       <Btn title="Done (Esc)" onClick={onClose}><X className="w-4 h-4" /></Btn>
     </div>

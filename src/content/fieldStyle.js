@@ -15,6 +15,11 @@
 // w, h  — desktop size in px (text boxes: width only); mw, mh — phone size
 // fill  — background color for buttons, lines and boxes (token or hex)
 // radius— corner rounding in px for photos, buttons, boxes and the map
+// mAuto — false once phone values were hand-tuned in the phone preview; until then
+//         phone values are worked out automatically from desktop edits
+// si, pw, ew, pl — desktop measurements saved with the last desktop edit (section
+//         inner width, container width, item width, placement ×1000) so the phone
+//         approximation can be redone later
 //
 // Everything is validated here before it reaches CSS, so bad values are ignored.
 import { isHex } from './theme.js';
@@ -73,6 +78,9 @@ export const cleanStyle = (s) => {
   }
   if (colorCss(s.fill)) out.fill = s.fill;
   const radius = num(s.radius, 0, RADIUS_MAX); if (radius !== undefined) out.radius = Math.round(radius);
+  if (s.mAuto === false) out.mAuto = false;
+  for (const k of ['si', 'pw', 'ew']) { const v = num(s[k], 1, SIZE_MAX); if (v) out[k] = Math.round(v); }
+  { const v = num(s.pl, 0, 1000); if (v !== undefined) out.pl = Math.round(v); }
   return out;
 };
 
@@ -112,6 +120,8 @@ export const boxAttrs = (s) => {
   return {
     'data-moved': flag(st.x || st.y || st.mx || st.my),
     'data-w': flag(st.w), 'data-h': flag(st.h), 'data-mw': flag(st.mw), 'data-mh': flag(st.mh),
+    // Automatic phone layout: where it sits horizontally (resolved on phones).
+    'data-pl': st.mAuto !== false && (st.x || st.my) ? String((st.pl ?? 500) / 1000) : undefined,
   };
 };
 
@@ -122,4 +132,40 @@ export const isMoved = (s) => {
 export const isSized = (s) => {
   const st = cleanStyle(s);
   return !!(st.w || st.h || st.mw || st.mh);
+};
+
+// ---- Layout settings shared by the editor (grid, buffer)
+export const GRID_SIZES = [16, 24, 32, 48];
+export const BUFFER_SIZES = [16, 24, 32, 48, 64];
+export const layoutGrid = (site) => (GRID_SIZES.includes(site?.layoutGrid) ? site.layoutGrid : 16);
+export const layoutBuffer = (site) => (BUFFER_SIZES.includes(site?.layoutBuffer) ? site.layoutBuffer : 24);
+export const phoneBuffer = (site) => Math.max(8, Math.round(layoutBuffer(site) * 2 / 3));
+
+// ---- Close approximation of phone values from a desktop edit.
+// Phones stack columns, so pixel offsets don't transfer. Instead:
+// - size: the same share of the container (buttons/lines keep their px, capped),
+//   photos keep their shape;
+// - horizontal: the same *relative placement* within the free space (0 = at the
+//   left buffer, 1 = at the right buffer), resolved on the phone itself by
+//   src/site/phoneLayout.js (so it never crosses the buffer);
+// - vertical: half the desktop move, capped.
+// `m` = desktop measurements at the edit: sectionInner, parentWidth, width (item
+// width) and placement (0–1). Phone reference width: 390 px.
+export const PHONE_REF_WIDTH = 390;
+export const approximatePhone = (st, kind, m, site) => {
+  const inner = PHONE_REF_WIDTH - 2 * phoneBuffer(site);
+  const out = { mx: undefined, my: undefined, mw: undefined, mh: undefined };
+  if (st.w) {
+    const share = Math.min(1, st.w / (m.parentWidth || st.w));
+    out.mw = Math.round(Math.min(inner, kind === 'button' || kind === 'line' ? st.w : share * inner));
+  }
+  if (st.h) {
+    if (kind === 'line') out.mh = st.h;
+    else if (st.w && out.mw) out.mh = Math.round(out.mw * (st.h / st.w));
+    else out.mh = Math.round(st.h * Math.min(1, inner / (m.parentWidth || inner)));
+  }
+  // Horizontal position is not guessed here: the phone works it out from the saved
+  // placement (`pl`) against its real layout — see src/site/phoneLayout.js.
+  if (st.y) out.my = Math.round(Math.max(-160, Math.min(160, st.y * 0.5))) || undefined;
+  return out;
 };

@@ -151,7 +151,7 @@ const validate = (content, operations) => {
   for (const [k, f] of Object.entries(next.theme?.fonts || {})) {
     if (!['builtin', 'google', 'custom'].includes(f?.source) || typeof f.family !== 'string' || !f.family) throw new Error(`theme.fonts.${k} needs source and family`);
   }
-  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'radius'];
+  const STYLE_KEYS = ['font', 'size', 'color', 'align', 'bold', 'italic', 'x', 'y', 'mx', 'my', 'w', 'h', 'mw', 'mh', 'fill', 'radius', 'mAuto', 'si', 'pw', 'ew', 'pl'];
   for (const sec of next.sections) {
     if (sec.styles == null) continue;
     if (typeof sec.styles !== 'object' || Array.isArray(sec.styles)) throw new Error(`sections "${sec.id}".styles must be an object`);

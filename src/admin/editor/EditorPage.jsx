@@ -104,7 +104,7 @@ export function Editor({ auth, email, dryRun = false }) {
   const [picker, setPicker] = useState(null);           // path of image field being changed
   const [adjusting, setAdjusting] = useState(null);     // path of image field being repositioned
   const [selection, setSelection] = useState([]);       // [{ path, kind }] picked in the preview (Shift+click groups)
-  const [grid, setGrid] = useState({ step: 16, show: false });
+  const [grid, setGrid] = useState({ show: false }); // grid size + buffer live in content.site
   const [siteTab, setSiteTab] = useState('details');    // site settings: details | theme
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -401,6 +401,7 @@ export function Editor({ auth, email, dryRun = false }) {
         <FormatBar
           selection={selection} content={content} setMany={setMany} grid={grid} setGrid={setGrid}
           onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])} onSelectItems={setSelection}
+          device={device}
         />
       ) : (
         <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several.</p>

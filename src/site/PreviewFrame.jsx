@@ -9,7 +9,7 @@ export default function PreviewFrame() {
   const [selected, setSelected] = useState(null);
   // Elements picked for the format bar / dragging: [{ path, kind }], last = primary.
   const [selection, setSelection] = useState([]);
-  const [grid, setGrid] = useState({ step: 16, show: false });
+  const [grid, setGrid] = useState({ show: false });
   const [alignRequest, setAlignRequest] = useState(null); // { mode, nonce } from the editor
 
   useEffect(() => {

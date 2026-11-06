@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 
 // Editor-only drag overlay; loaded only inside the editor preview.
 const DragLayer = lazy(() => import('./DragLayer.jsx'));
@@ -11,6 +11,8 @@ import {
 } from './sections/Sections.jsx';
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
+import { usePhoneLayout } from './phoneLayout.js';
+import { phoneBuffer } from '../content/fieldStyle.js';
 
 
 const COMPONENTS = {
@@ -37,6 +39,10 @@ export default function Site({ content, edit = null }) {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Phones: place automatically-laid-out items from their desktop intent.
+  const rootRef = useRef(null);
+  usePhoneLayout(rootRef, phoneBuffer(site), [content]);
+
   const navItems = sections.filter((s) => s.visible !== false && s.showInNav);
   const go = (id) => { scrollToSection(id); setIsMenuOpen(false); };
 
@@ -44,6 +50,7 @@ export default function Site({ content, edit = null }) {
     <EditContext.Provider value={edit}>
       <ThemeStyle theme={content.theme} />
       <div
+        ref={rootRef}
         className={`bg-paper text-ink font-details selection:bg-accent selection:text-paper overflow-x-hidden ${edit ? 'edit-mode' : ''}`}
         onClickCapture={(e) => {
           // In the editor, links shouldn't navigate away from the preview.

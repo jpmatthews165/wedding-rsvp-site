@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { getAt } from '../content/paths.js';
-import { cleanStyle, styleKey } from '../content/fieldStyle.js';
+import { approximatePhone, cleanStyle, layoutBuffer, layoutGrid, phoneBuffer, styleKey } from '../content/fieldStyle.js';
 import { PHONE_QUERY } from './CoverImage.jsx';
 
 // Editor-only overlay (inside the preview iframe) for the selected element(s):
@@ -17,8 +17,6 @@ import { PHONE_QUERY } from './CoverImage.jsx';
 // Moving only changes each item's offset (CSS translate), never the layout around
 // it. Desktop and phone offsets are stored separately (x/y vs mx/my).
 
-const MARGIN_DESKTOP = 24;
-const MARGIN_PHONE = 16;
 const GUIDE_SNAP = 10; // px: how close an edge must be before it snaps to a guide
 
 const splitPath = (sel) => {
@@ -59,7 +57,9 @@ const liveItems = (selection) => selection
 
 export default function DragLayer({ content, edit }) {
   const selection = edit.selection || [];
-  const step = edit.grid?.step || 16;
+  const step = layoutGrid(content.site);
+  // The edge buffer no element may cross (smaller on phones). Set in the format bar.
+  const bufferOf = () => (isPhone() ? phoneBuffer(content.site) : layoutBuffer(content.site));
   const [box, setBox] = useState(null);       // { items, union, section }
   const [guides, setGuides] = useState(null); // { dragging, x?: target, y?: target }
   const dragRef = useRef(null);
@@ -88,7 +88,7 @@ export default function DragLayer({ content, edit }) {
 
   // Lines that other items (and the section) offer to snap to.
   const targets = (els, section) => {
-    const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+    const margin = bufferOf();
     const sectionEl = els[els.length - 1].closest('section');
     const out = {
       x: [
@@ -131,7 +131,7 @@ export default function DragLayer({ content, edit }) {
     const dx = gx ? dxRaw + gx.diff : Math.round(dxRaw / step) * step;
     const dy = gy ? dyRaw + gy.diff : Math.round(dyRaw / step) * step;
 
-    const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+    const margin = bufferOf();
     let minDx = -Infinity, maxDx = Infinity, minDy = -Infinity, maxDy = Infinity;
     d.items.forEach(({ rect0, section }) => {
       if (rect0.width <= section.width - 2 * margin) {
@@ -155,12 +155,39 @@ export default function DragLayer({ content, edit }) {
   };
 
   // Save new offsets for one or more items as a single change (one Undo step).
+  // Desktop edits also refresh the phone layout's close approximation (unless the
+  // phone layout was hand-tuned); phone edits mark it hand-tuned.
+  const withPhone = (path, value) => {
+    if (isPhone()) return { ...value, mAuto: false };
+    if (value.mAuto === false) return value;
+    const el = findEl(path);
+    const section = el?.closest('section')?.getBoundingClientRect();
+    const parentWidth = el?.parentElement?.getBoundingClientRect().width;
+    if (!section || !parentWidth) return value;
+    // Where the item will sit after this edit. Drags/resizes are already applied
+    // live; align and arrow-key moves aren't yet, so add the pending change.
+    const r = el.getBoundingClientRect();
+    const left = r.left + ((value.x || 0) - currentOffset(el).x);
+    const buffer = layoutBuffer(content.site);
+    const sectionInner = section.width - 2 * buffer;
+    const free = sectionInner - r.width;
+    const placement = free > 1 ? (left - (section.left + buffer)) / free : 0.5;
+    const m = { sectionInner, parentWidth, width: r.width, placement };
+    return {
+      ...value,
+      si: Math.round(sectionInner), pw: Math.round(parentWidth), ew: Math.round(r.width),
+      pl: Math.round(Math.min(1, Math.max(0, placement)) * 1000),
+      ...approximatePhone(value, el.getAttribute('data-el-kind'), m, content.site),
+    };
+  };
+
+  // Save new offsets for one or more items as a single change (one Undo step).
   const commitOffsets = (entries) => {
     const [kx, ky] = deviceKeys();
     const changes = entries.map(({ path, x, y }) => {
       const sp = stylePathOf(path);
-      return { path: sp, value: { ...cleanStyle(getAt(content, sp)), [kx]: x, [ky]: y } };
-    }).filter((c) => c.path);
+      return sp && { path: sp, value: withPhone(path, { ...cleanStyle(getAt(content, sp)), [kx]: x, [ky]: y }) };
+    }).filter(Boolean);
     if (changes.length) edit.onPatchMany(changes);
   };
 
@@ -224,8 +251,15 @@ export default function DragLayer({ content, edit }) {
     if (!req || req.nonce === lastAlign.current) return;
     lastAlign.current = req.nonce;
     const { items } = snapshot();
-    if (items.length < 2) return;
-    const u = union(items.map((it) => it.rect0));
+    if (!items.length) return;
+    // One item: align to its section, inside the buffer. Several: to each other.
+    let u = union(items.map((it) => it.rect0));
+    if (items.length === 1) {
+      const sec = items[0].section;
+      const b = bufferOf();
+      u = { left: sec.left + b, right: sec.right - b, top: sec.top + b, bottom: sec.bottom - b };
+      u.width = u.right - u.left; u.height = u.bottom - u.top;
+    }
     commitOffsets(items.map(({ path, start, rect0: r }) => {
       let dx = 0, dy = 0;
       if (req.mode === 'left') dx = u.left - r.left;
@@ -268,7 +302,7 @@ export default function DragLayer({ content, edit }) {
   const onResizeMove = (e) => {
     const d = resizeRef.current;
     if (!d) return;
-    const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+    const margin = bufferOf();
     const sx = d.dir.includes('e') ? 1 : d.dir.includes('w') ? -1 : 0;
     const sy = d.dir.includes('s') ? 1 : d.dir.includes('n') ? -1 : 0;
     const fine = kind === 'line' ? 1 : step; // line thickness moves in 1px steps
@@ -310,7 +344,7 @@ export default function DragLayer({ content, edit }) {
     const next = { ...cur, [d.kx]: d.last.x, [d.ky]: d.last.y };
     if (d.last.w !== undefined) next[d.kw] = d.last.w;
     if (d.last.h !== undefined) next[d.kh] = d.last.h;
-    edit.onPatchMany([{ path: sp, value: next }]);
+    edit.onPatchMany([{ path: sp, value: withPhone(d.path, next) }]);
   };
 
   // Safety net: finish a drag/resize even if the release happens off the handle.
@@ -323,7 +357,7 @@ export default function DragLayer({ content, edit }) {
 
   if (!box) return null;
   const { union: u, section } = box;
-  const margin = isPhone() ? MARGIN_PHONE : MARGIN_DESKTOP;
+  const margin = bufferOf();
   const showGrid = !!guides?.dragging || edit.grid?.show;
   const count = box.items.length;
   const lineColor = '#d4583a';
