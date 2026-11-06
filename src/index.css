@@ -117,3 +117,9 @@
 /* Lines are thin; give them a bigger click target in the editor. */
 .edit-mode [data-el-kind="line"] { position: relative; }
 .edit-mode [data-el-kind="line"]::after { content: ""; position: absolute; inset: -8px 0; }
+
+/* Section background (section.bg): own stacking context so the layer (z-index -1)
+   paints above the design's background but under the content. */
+[data-has-bg] > section { position: relative; isolation: isolate; }
+/* See-through cover/registry/RSVP photo. */
+[data-bgio] > section > [data-parallax] { opacity: var(--bgio); }

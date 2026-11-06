@@ -206,3 +206,40 @@ export const sectionLayoutProps = (l) => {
   }
   return props;
 };
+
+// ---- Section background (click empty space in a section in the editor).
+// Stored on the section as `bg`:
+//   color        — theme color name or "#rrggbb", painted over the design's own background
+//   colorOpacity — 0–100 (default 100)
+//   image, imagePos — a background photo + its focal point/zoom (like any photo)
+//   imageOpacity — 0–100 (default 100); a see-through photo shows the color under it
+// Sections whose design already has a background photo (cover, registry, RSVP) keep
+// using their own `image` field; `bg` only adds the color and the photo's opacity.
+export const NATIVE_BG_IMAGE = ['hero', 'registry', 'rsvp'];
+export const bgImageField = (type) => (NATIVE_BG_IMAGE.includes(type) ? 'image' : 'bg.image');
+
+export const cleanSectionBg = (b) => {
+  if (!b || typeof b !== 'object') return {};
+  const out = {};
+  if (colorCss(b.color)) out.color = b.color;
+  for (const k of ['colorOpacity', 'imageOpacity']) {
+    const v = num(b[k], 0, 100);
+    if (v !== undefined) out[k] = Math.round(v);
+  }
+  if (typeof b.image === 'string' && b.image.trim()) out.image = b.image;
+  if (b.imagePos && typeof b.imagePos === 'object') out.imagePos = b.imagePos;
+  return out;
+};
+
+// Wrapper props: switch on the background layer (and the native photo's opacity).
+export const sectionBgProps = (section) => {
+  const bg = cleanSectionBg(section?.bg);
+  const native = NATIVE_BG_IMAGE.includes(section?.type);
+  const props = { style: {} };
+  if (bg.color || (!native && bg.image)) props['data-has-bg'] = '';
+  if (native && bg.imageOpacity !== undefined && bg.imageOpacity !== 100) {
+    props['data-bgio'] = '';
+    props.style['--bgio'] = String(bg.imageOpacity / 100);
+  }
+  return props;
+};

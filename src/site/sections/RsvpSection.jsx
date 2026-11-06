@@ -1,6 +1,7 @@
 import { Search, X } from 'lucide-react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
+import SectionBackground from '../SectionBackground.jsx';
 import { T, useSection, useEdit, ImageButton } from '../editing.jsx';
 import useRsvp from './useRsvp.js';
 
@@ -17,6 +18,7 @@ export default function RsvpSection() {
   return (
     <>
       <section id={section.id} className="relative min-h-screen flex items-center justify-center py-24 px-6 overflow-hidden border-t border-brand/15 bg-paper2">
+        <SectionBackground />
         {section.image && <ParallaxBackground image={section.image} pos={section.imagePos} speed={0.3} />}
         <div className="absolute inset-0 bg-paper/85 backdrop-blur-sm z-10 pointer-events-none" />
         <ImageButton f="image" className="bottom-6 right-6" />

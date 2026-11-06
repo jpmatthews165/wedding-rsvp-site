@@ -57,7 +57,8 @@ const STYLE_TEXT = `Per-element formatting and position: each section may have "
   w, h: desktop size in px (text: width only); mw, mh: phone size. fill: background of buttons/lines/boxes (theme color name or "#rrggbb"). radius: corner rounding in px (photos, buttons, boxes, map).
   Layout-only keys (no content) also accept styles: "_divider" (line under a heading), "_btn" / "_btnCalendar" / "_btnRsvp" (buttons), "_map", and per item "items_N__card", "hotels_N__box", "hotels_N__btn", "links_N__btn".
 Set a whole style with "set" on sections.N.styles.<key>, or one property with sections.N.styles.<key>.<prop>. To reset, remove the property or the key.
-Section height: sections.N.layout = { h, pb, d } (desktop minimum height px, bottom padding px, change vs the design's height px) and { mh, mpb } for phones. Prefer leaving these to the editor's drag handle; remove layout to reset.`;
+Section height: sections.N.layout = { h, pb, d } (desktop minimum height px, bottom padding px, change vs the design's height px) and { mh, mpb } for phones. Prefer leaving these to the editor's drag handle; remove layout to reset.
+Section background: sections.N.bg = { color, colorOpacity, image, imagePos, imageOpacity }, all optional. color is a theme color name or "#rrggbb" painted over the design's background; colorOpacity/imageOpacity are 0–100 (a see-through photo shows the color under it). imagePos is like any photo position { x, y, zoom }. The cover (hero), registry and RSVP sections already have a background photo in their own "image" field: for those use "image"/"imagePos" for the photo and bg only for color and imageOpacity. Remove bg to go back to the design's background.`;
 
 const SCHEMA_TEXT = [
   'site (object):',
@@ -162,6 +163,17 @@ const validate = (content, operations) => {
       for (const [k, v] of Object.entries(sec.layout)) {
         if (v == null) continue;
         if (!['h', 'pb', 'mh', 'mpb', 'd'].includes(k) || !Number.isFinite(v) || Math.abs(v) > 8000 || (k !== 'd' && v < 0)) throw new Error(`sections "${sec.id}".layout.${k} is not valid`);
+      }
+    }
+    if (sec.bg != null) {
+      if (typeof sec.bg !== 'object' || Array.isArray(sec.bg)) throw new Error(`sections "${sec.id}".bg must be an object`);
+      for (const [k, v] of Object.entries(sec.bg)) {
+        if (v === undefined) continue;
+        if (!['color', 'colorOpacity', 'image', 'imagePos', 'imageOpacity'].includes(k)) throw new Error(`sections "${sec.id}".bg.${k} is not a background property`);
+        if (k === 'color' && !COLOR_TOKENS.some((t) => t.key === v) && !isHex(v)) throw new Error(`bg.color must be a theme color name or "#rrggbb"`);
+        if ((k === 'colorOpacity' || k === 'imageOpacity') && !(Number.isFinite(v) && v >= 0 && v <= 100)) throw new Error(`bg.${k} must be 0–100`);
+        if (k === 'image' && (typeof v !== 'string' || !/^(https:\/\/|\/[^/])/.test(v))) throw new Error('bg.image must be a photo address');
+        if (k === 'imagePos' && (typeof v !== 'object' || Array.isArray(v))) throw new Error('bg.imagePos must be { x, y, zoom }');
       }
     }
     if (sec.styles == null) continue;

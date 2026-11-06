@@ -12,7 +12,7 @@ import {
 import RsvpSection from './sections/RsvpSection.jsx';
 import ThemeStyle from './ThemeStyle.jsx';
 import { usePhoneLayout } from './phoneLayout.js';
-import { phoneBuffer, sectionLayoutProps } from '../content/fieldStyle.js';
+import { phoneBuffer, sectionBgProps, sectionLayoutProps } from '../content/fieldStyle.js';
 
 
 const COMPONENTS = {
@@ -92,11 +92,15 @@ export default function Site({ content, edit = null }) {
           const Component = COMPONENTS[section.type];
           if (!Component) return null;
           const hidden = section.visible === false;
+          const lp = sectionLayoutProps(section.layout);
+          const bp = sectionBgProps(section);
           return (
             <SectionContext.Provider key={section.id} value={{ section, base: `sections.${i}` }}>
               <SectionFrame label={`${SECTION_TYPES[section.type].label}${hidden ? ' · hidden' : ''}`}>
                 <div
-                  {...sectionLayoutProps(section.layout)}
+                  {...lp}
+                  {...bp}
+                  style={{ ...lp.style, ...bp.style }}
                   className={hidden ? 'opacity-40' : ''}
                   // Desktop reading order, used to re-flow this section on phones (phoneLayout.js).
                   data-phone-order={Array.isArray(section.phoneOrder) && section.phoneOrder.length ? JSON.stringify(section.phoneOrder) : undefined}

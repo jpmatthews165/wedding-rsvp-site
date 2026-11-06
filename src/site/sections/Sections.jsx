@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ParallaxBackground from '../../components/ParallaxBackground.jsx';
 import RevealOnScroll from '../RevealOnScroll.jsx';
 import CoverImage from '../CoverImage.jsx';
+import SectionBackground from '../SectionBackground.jsx';
 import { safeUrl } from '../../lib/safeUrl.js';
 import { T, useShow, useSection, useEdit, ImageButton, Movable } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
@@ -33,6 +34,7 @@ export function HeroSection() {
   const { section } = useSection();
   return (
     <section id={section.id} className="relative h-screen flex items-center justify-center overflow-hidden bg-paper">
+      <SectionBackground />
       <ParallaxBackground image={section.image} pos={section.imagePos} speed={0.35} />
       <ImageButton f="image" className="bottom-6 right-6" />
       <div className="absolute inset-0 bg-gradient-to-b from-paper via-paper/40 to-transparent z-10 pointer-events-none" />
@@ -90,6 +92,7 @@ export function DetailsSection({ site }) {
 
   return (
     <section id={section.id} className="relative flex items-center justify-center py-32 px-6 md:px-12 bg-paper">
+      <SectionBackground />
       <div className="max-w-6xl w-full grid md:grid-cols-2 gap-16 md:gap-24 items-center">
         <div className="space-y-10 text-center md:text-left">
           <RevealOnScroll>
@@ -152,6 +155,7 @@ export function TravelSection() {
   const hotels = section.hotels || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className="max-w-5xl mx-auto text-center">
         <RevealOnScroll>
           <H2 />
@@ -218,6 +222,7 @@ export function CountdownSection({ site }) {
   }, [target]);
   return (
     <section id={section.id} className="py-24 bg-brand text-paper relative z-20 shadow-inner">
+      <SectionBackground />
       <div className="max-w-4xl mx-auto px-6 text-center">
         <RevealOnScroll>
           <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm md:text-lg mb-12 opacity-90 text-paper" />
@@ -244,6 +249,7 @@ export function CardsSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-5xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
           <H2 />
@@ -281,6 +287,7 @@ export function ScheduleSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className="max-w-3xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
           <H2 />
@@ -319,6 +326,7 @@ export function TextSection() {
   const hasImage = !!section.image || !!edit;
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper border-t border-brand/15">
+      <SectionBackground />
       <div className={`max-w-6xl mx-auto grid gap-16 items-center ${hasImage ? 'md:grid-cols-2' : 'max-w-3xl'}`}>
         <RevealOnScroll className={hasImage ? 'text-center md:text-left' : 'text-center'}>
           <T f="eyebrow" as="p" className="font-subtitle tracking-[0.15em] uppercase text-sm text-ink-soft mb-4" />
@@ -353,6 +361,7 @@ export function GallerySection() {
   const photos = (section.photos || []).filter((p) => p.image);
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-6xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
           <H2 />
@@ -383,6 +392,7 @@ export function RegistrySection() {
   const links = section.links || [];
   return (
     <section id={section.id} className="relative py-40 flex items-center justify-center overflow-hidden bg-paper2">
+      <SectionBackground />
       {section.image && <ParallaxBackground image={section.image} pos={section.imagePos} speed={0.3} />}
       <ImageButton f="image" className="bottom-6 right-6" />
       <RevealOnScroll className="relative z-10 text-center max-w-2xl mx-6 bg-paper/90 backdrop-blur-sm p-12 md:p-24 border border-ink/10 shadow-2xl">
@@ -409,6 +419,7 @@ export function FaqSection() {
   const items = section.items || [];
   return (
     <section id={section.id} className="py-32 px-6 md:px-12 bg-paper2">
+      <SectionBackground />
       <div className="max-w-3xl mx-auto">
         <RevealOnScroll className="text-center mb-16">
           <H2 />

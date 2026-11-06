@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignJustify, AlignLeft,
-  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, Italic, Maximize2, Minus, PaintBucket, Pipette, Plus,
-  RotateCcw, Smartphone, SquareDashedMousePointer, X,
+  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, ImagePlus, Italic, Maximize2, Minus, Move, PaintBucket, Pipette, Plus,
+  RotateCcw, Smartphone, SquareDashedMousePointer, Trash2, X,
 } from 'lucide-react';
 import { getAt } from '../../content/paths.js';
-import { BUFFER_SIZES, COLOR_TOKENS, FONT_ROLES, GRID_SIZES, approximatePhone, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
+import { BUFFER_SIZES, COLOR_TOKENS, FONT_ROLES, GRID_SIZES, approximatePhone, bgImageField, cleanSectionBg, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
+import { SECTION_TYPES } from '../../content/schema.js';
 import { isHex } from '../../content/theme.js';
 
 // Format bar above the preview: formats or positions the element clicked in the preview.
@@ -38,7 +39,7 @@ const Btn = ({ active, title, onClick, children, disabled }) => (
 );
 const Sep = () => <span className="w-px h-6 bg-[#333036]/12 mx-1 shrink-0" />;
 
-function ColorMenu({ value, themeColors, onChange, label = 'Text color', fill = false }) {
+function ColorMenu({ value, themeColors, onChange, label = 'Text color', fill = false, defaultLabel }) {
   const [open, setOpen] = useState(false);
   const [hex, setHex] = useState('');
   const ref = useRef(null);
@@ -95,15 +96,75 @@ function ColorMenu({ value, themeColors, onChange, label = 'Text color', fill = 
               )}
             </div>
           </div>
-          <button type="button" onClick={() => { onChange(undefined); setOpen(false); }} className="text-xs text-[#6c5d84] hover:underline">{fill ? 'Use the design\'s default fill' : 'Use the design\'s default color'}</button>
+          <button type="button" onClick={() => { onChange(undefined); setOpen(false); }} className="text-xs text-[#6c5d84] hover:underline">{defaultLabel || (fill ? 'Use the design\'s default fill' : 'Use the design\'s default color')}</button>
         </div>
       )}
     </div>
   );
 }
 
-export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose, onSelectItems, device }) {
-  const items = selection.map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
+// Opacity slider (0–100 %).
+const Opacity = ({ label, short, value, onChange, disabled }) => (
+  <label className={`h-8 inline-flex items-center gap-1.5 px-1.5 text-xs text-[#333036] ${disabled ? 'opacity-30' : ''}`} title={label}>
+    <span className="w-3.5 h-3.5 rounded-sm border border-[#333036]/40" style={{ background: 'linear-gradient(135deg, #333036 50%, transparent 50%)' }} />
+    {short && <span className="text-[11px] text-[#333036]/70">{short}</span>}
+    <input type="range" min="0" max="100" step="5" value={value} disabled={disabled} aria-label={label}
+      onChange={(e) => onChange(+e.target.value)} className="w-20 accent-[#6c5d84]" />
+    <span className="w-8 tabular-nums text-[11px] text-[#333036]/70">{value}%</span>
+  </label>
+);
+
+// Clicking empty space in a section: its background color and photo.
+function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onClose }) {
+  const base = item.path.replace(/\._bg$/, '');
+  const section = getAt(content, base) || {};
+  const bg = cleanSectionBg(section.bg);
+  const imgPath = `${base}.${bgImageField(section.type)}`;
+  const image = getAt(content, imgPath);
+  const set = (key, value) => setMany([{ path: `${base}.bg.${key}`, value }]);
+  const changed = bg.color || bg.colorOpacity !== undefined || bg.imageOpacity !== undefined || (bgImageField(section.type) === 'bg.image' && image);
+  return (
+    <div className="flex flex-wrap items-center gap-0.5 rounded-xl bg-white shadow-sm border border-[#333036]/10 px-2 py-1 mx-2 mb-2">
+      <span className="text-[11px] font-semibold text-[#333036]/60 px-1 max-w-[11rem] truncate" title="Section background">
+        Background · {SECTION_TYPES[section.type]?.label || 'Section'}
+      </span>
+      <Sep />
+      <ColorMenu fill label="Background color" value={bg.color} themeColors={content.theme?.colors || {}}
+        defaultLabel="Use the design's own background" onChange={(v) => set('color', v)} />
+      <Opacity label="Color opacity" short="Color" value={bg.colorOpacity ?? 100} disabled={!bg.color} onChange={(v) => set('colorOpacity', v === 100 ? undefined : v)} />
+      <Sep />
+      <button type="button" onClick={() => onPickImage(imgPath)}
+        className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8">
+        <ImagePlus className="w-4 h-4" /> {image ? 'Change photo' : 'Add photo'}
+      </button>
+      {image && (
+        <>
+          <button type="button" onClick={() => onAdjustImage(imgPath)}
+            className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8">
+            <Move className="w-4 h-4" /> Reposition & zoom
+          </button>
+          <Opacity label="Photo opacity (the color shows through)" short="Photo" value={bg.imageOpacity ?? 100} onChange={(v) => set('imageOpacity', v === 100 ? undefined : v)} />
+          <Btn title="Remove photo" onClick={() => setMany([{ path: imgPath, value: undefined }, { path: `${imgPath}Pos`, value: undefined }])}>
+            <Trash2 className="w-4 h-4" />
+          </Btn>
+        </>
+      )}
+      <Sep />
+      <Btn title="Back to the design's background" disabled={!changed}
+        onClick={() => setMany([{ path: `${base}.bg`, value: undefined }])}>
+        <RotateCcw className="w-3.5 h-3.5" />
+      </Btn>
+      <span className="flex-1" />
+      <Btn title="Done (Esc)" onClick={onClose}><X className="w-4 h-4" /></Btn>
+    </div>
+  );
+}
+
+export default function FormatBar({ selection, content, setMany, grid, setGrid, onAlign, onClose, onSelectItems, device, onPickImage, onAdjustImage }) {
+  if (selection.length === 1 && selection[0].kind === 'section') {
+    return <SectionBgBar item={selection[0]} content={content} setMany={setMany} onPickImage={onPickImage} onAdjustImage={onAdjustImage} onClose={onClose} />;
+  }
+  const items = selection.filter((s) => s.kind !== 'section').map((s) => ({ ...s, ...parse(s.path) })).filter((s) => s.stylePath);
   if (!items.length) return null;
   const texts = items.filter((i) => i.kind === 'text');
   const primary = texts[texts.length - 1] || items[items.length - 1];

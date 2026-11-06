@@ -401,10 +401,10 @@ export function Editor({ auth, email, dryRun = false }) {
         <FormatBar
           selection={selection} content={content} setMany={setMany} grid={grid} setGrid={setGrid}
           onAlign={(mode) => post({ type: 'align', mode })} onClose={() => setSelection([])} onSelectItems={setSelection}
-          device={device}
+          device={device} onPickImage={setPicker} onAdjustImage={setAdjusting}
         />
       ) : (
-        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several.</p>
+        <p className="text-center text-[11px] text-[#333036]/55 -mt-1 mb-2 px-2">Click any text or photo in the preview to format it or drag it into place. Shift+click to select several. Click empty space in a section for its background.</p>
       )}
       <div className="flex-1 min-h-0 flex justify-center px-2 pb-2">
         <iframe

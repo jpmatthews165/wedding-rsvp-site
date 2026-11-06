@@ -50,7 +50,11 @@ export default function PreviewFrame() {
         const parent = parentEl ? { path: parentEl.getAttribute('data-el'), kind: parentEl.getAttribute('data-el-kind') } : null;
         setSelection((cur) => {
           let next;
-          if (additive) next = cur.some((x) => x.path === path) ? cur.filter((x) => x.path !== path) : [...cur, { path, kind, parent }];
+          if (additive) {
+            // A section background can't be grouped with items.
+            const base = kind === 'section' ? [] : cur.filter((x) => x.kind !== 'section');
+            next = base.some((x) => x.path === path) ? base.filter((x) => x.path !== path) : [...base, { path, kind, parent }];
+          }
           else next = cur.length === 1 && cur[0].path === path ? cur : [{ path, kind, parent }];
           if (next !== cur) send({ type: 'selection', items: next });
           return next;

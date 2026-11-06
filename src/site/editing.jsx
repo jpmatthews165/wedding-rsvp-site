@@ -184,6 +184,12 @@ export function SectionFrame({ children, label }) {
       data-base={base}
       className={`relative edit-section ${selected ? 'edit-section-selected' : ''}`}
       onClickCapture={() => { if (!selected) edit.onSelect(base); }}
+      // Empty space (not text, a photo, a button…) selects the section's background.
+      onPointerDown={(e) => {
+        if (e.button !== 0 || e.target.closest('button, a, input, textarea, select, label, form, [data-editable], [data-el], .section-resize, .edit-section-badge')) return;
+        edit.onSelect(base);
+        edit.onSelectEl(`${base}._bg`, 'section', false);
+      }}
     >
       <div className="edit-section-badge">{label}</div>
       {children}
