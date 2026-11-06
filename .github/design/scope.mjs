@@ -28,7 +28,13 @@ export const PROTECTED = [
   /^src\/site\/DragLayer\.jsx$/,
 ];
 
-export const isAllowed = (path) => ALLOWED.some((r) => r.test(path)) && !PROTECTED.some((r) => r.test(path));
+// Written by the pipeline itself (.github/design/pending.mjs), never by Claude:
+// the "Clean up" content patch + the draft it was made from. Data, not code, so the
+// code checks below don't apply to it. Reset to null before a change is merged.
+export const GENERATED = [/^src\/content\/designPending\.json$/];
+export const isGenerated = (path) => GENERATED.some((r) => r.test(path));
+
+export const isAllowed = (path) => isGenerated(path) || (ALLOWED.some((r) => r.test(path)) && !PROTECTED.some((r) => r.test(path)));
 
 // Added lines may not contain these: no network, storage, secrets, raw HTML,
 // dynamic code, or Firebase from visual files.

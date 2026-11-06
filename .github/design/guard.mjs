@@ -7,7 +7,7 @@
 //   - removes safeUrl() link protection.
 // Usage: node .github/design/guard.mjs <base-ref>   (changes must be staged)
 import { execFileSync } from 'node:child_process';
-import { isAllowed, FORBIDDEN_CODE, ALLOWED_PACKAGES } from './scope.mjs';
+import { isAllowed, isGenerated, FORBIDDEN_CODE, ALLOWED_PACKAGES } from './scope.mjs';
 
 const base = process.argv[2] || 'origin/main';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 50 * 1024 * 1024 });
@@ -29,7 +29,7 @@ const diff = git('diff', '--cached', '-U0', base);
 let file = '';
 for (const line of diff.split('\n')) {
   if (line.startsWith('+++ ')) { file = line.replace(/^\+\+\+ b\//, ''); continue; }
-  if (!line.startsWith('+') || line.startsWith('+++')) continue;
+  if (!line.startsWith('+') || line.startsWith('+++') || isGenerated(file)) continue;
   const code = line.slice(1);
   for (const [re, what] of FORBIDDEN_CODE) {
     if (re.test(code)) problems.push(`${file}: adds ${what}, which design changes can't include.`);

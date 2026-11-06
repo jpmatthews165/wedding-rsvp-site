@@ -48,7 +48,6 @@ export function createMeasurer() {
   return {
     open: () => Promise.all([make('desktop'), make('phone')]),
     measure: (device, content, bases) => ask(device, { task: 'layout', content, bases }),
-    phoneIntent: (content, bases) => ask('desktop', { task: 'phoneIntent', content, bases }),
     close: () => {
       listeners.forEach((fn) => window.removeEventListener('message', fn));
       listeners.clear();

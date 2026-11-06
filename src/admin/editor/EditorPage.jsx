@@ -12,6 +12,7 @@ import { DEFAULT_CONTENT } from '../../content/defaultContent.js';
 import { SECTION_TYPES, SITE_FIELDS, makeSection, newSectionId, normalizeContent, sectionLabel } from '../../content/schema.js';
 import { DRAFT_DOC, HISTORY_COLLECTION, PUBLISHED_DOC } from '../../content/useSiteContent.js';
 import { getAt, setAt, toPlain } from '../../content/paths.js';
+import { applyPatch } from '../../content/designPatch.js';
 import { Fields } from './FieldForm.jsx';
 import ImagePicker from './ImagePicker.jsx';
 import ImageAdjust from './ImageAdjust.jsx';
@@ -110,6 +111,7 @@ export function Editor({ auth, email, dryRun = false }) {
   const [showHistory, setShowHistory] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
+  const [claudeTab, setClaudeTab] = useState('quick'); // Ask Claude: quick | design
   const [publishing, setPublishing] = useState(false);
   const [mobilePane, setMobilePane] = useState('preview'); // edit | preview | ai (small screens)
   const iframeRef = useRef(null);
@@ -433,7 +435,13 @@ export function Editor({ auth, email, dryRun = false }) {
       onFocusPath={focusPath}
     />
   );
-  const assistant = <ClaudeTabs quick={quickEdits} design={<DesignPanel getToken={auth.getToken} />} />;
+  // An approved clean-up: give the draft the content patch that goes with the new code
+  // (drops the hand-placed offsets it replaced), as one Undo step.
+  const applyDesignPatch = (patch) => {
+    const r = applyPatch(getPresent(), patch);
+    if (r.applied) applyChange(r.content, null);
+  };
+  const assistant = <ClaudeTabs tab={claudeTab} onTab={setClaudeTab} quick={quickEdits} design={<DesignPanel getToken={auth.getToken} onApplyPatch={applyDesignPatch} />} />;
 
 
   return (
@@ -509,8 +517,8 @@ export function Editor({ auth, email, dryRun = false }) {
         />
       )}
       {showCleanup && (
-        <CleanupDialog content={content} getContent={getPresent} selected={selected} applyChange={applyChange}
-          getToken={auth.getToken} onFocus={focusPath} onClose={() => setShowCleanup(false)} />
+        <CleanupDialog content={content} getContent={getPresent} selected={selected} getToken={auth.getToken}
+          onShowDesign={() => { setClaudeTab('design'); setMobilePane('ai'); }} onClose={() => setShowCleanup(false)} />
       )}
       {showPublish && (
         <Modal onClose={() => setShowPublish(false)} title="Publish your changes?">

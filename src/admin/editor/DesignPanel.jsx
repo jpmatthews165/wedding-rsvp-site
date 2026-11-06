@@ -31,7 +31,8 @@ const ago = (ms) => {
   return h < 24 ? `${h} h ago` : new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-export default function DesignPanel({ getToken }) {
+// onApplyPatch(patch): a clean-up was approved; apply its content patch to the draft.
+export default function DesignPanel({ getToken, onApplyPatch }) {
   const [items, setItems] = useState(null);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState('');       // '' | 'create' | `${action}:${id}`
@@ -80,7 +81,7 @@ export default function DesignPanel({ getToken }) {
   const act = async (key, body, after) => {
     setBusy(key);
     setError('');
-    try { await call(body); after?.(); await load(); } catch (err) { setError(err.message); } finally { setBusy(''); }
+    try { const data = await call(body); after?.(data); await load(); } catch (err) { setError(err.message); } finally { setBusy(''); }
   };
 
   return (
@@ -113,7 +114,7 @@ export default function DesignPanel({ getToken }) {
                 </span>
                 <span className="text-[11px] text-[#333036]/50">{ago(it.createdAt)}</span>
               </div>
-              <p className="text-sm text-[#333036]">{it.text}</p>
+              <p className="text-sm text-[#333036]">{it.kind === 'cleanup' && <span className="mr-1.5 inline-flex rounded bg-[#6c5d84]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#6c5d84] align-middle">Clean up</span>}{it.text}</p>
               {it.history.map((h, i) => <p key={i} className="text-xs text-[#333036]/70 border-l-2 border-[#6c5d84]/30 pl-2">Then: {h.text}</p>)}
               <p className="text-[11px] text-[#333036]/50">Asked by {it.by}</p>
               {it.summary && it.state !== 'failed' && <p className="text-xs text-[#333036]/80 bg-[#f6f3ee] rounded-lg p-2">Claude: {it.summary}</p>}
@@ -126,7 +127,7 @@ export default function DesignPanel({ getToken }) {
                   </a>
                   {confirming === it.id ? (
                     <>
-                      <button disabled={!!busy} onClick={() => act(`approve:${it.id}`, { action: 'approve', id: it.id }, () => setConfirming(null))}
+                      <button disabled={!!busy} onClick={() => act(`approve:${it.id}`, { action: 'approve', id: it.id }, (data) => { setConfirming(null); if (data?.patch?.length) onApplyPatch?.(data.patch); })}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-[#11704f] text-white px-3 py-1.5 text-xs font-semibold disabled:opacity-50">
                         {busy === `approve:${it.id}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Yes, publish to everyone
                       </button>
@@ -180,8 +181,11 @@ export default function DesignPanel({ getToken }) {
   );
 }
 
-export function ClaudeTabs({ quick, design }) {
-  const [tab, setTab] = useState('quick');
+// Controlled when tab/onTab are given (EditorPage opens Design changes after a Clean up).
+export function ClaudeTabs({ quick, design, tab: outerTab, onTab }) {
+  const [innerTab, setInnerTab] = useState('quick');
+  const tab = outerTab ?? innerTab;
+  const setTab = onTab ?? setInnerTab;
   return (
     <div className="flex flex-col h-full min-h-0 bg-white">
       <div className="flex border-b border-[#333036]/10 text-sm shrink-0">

@@ -6,7 +6,7 @@ import Site from './Site.jsx';
 // An iframe gives a true phone/desktop viewport for parallax, sticky header, etc.
 //
 // /preview-frame?measure=desktop|phone is a hidden copy used by "Clean up": it only
-// answers { type: 'measure', id, task: 'layout'|'phoneIntent', content, bases }
+// answers { type: 'measure', id, task: 'layout', content, bases }
 // with { type: 'measured', id, data } (see src/site/measure.js).
 const MEASURE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('measure');
 const SOURCE = MEASURE ? 'wedding-measure' : 'wedding-preview';
@@ -52,9 +52,9 @@ export default function PreviewFrame() {
         await new Promise((r) => setTimeout(r, 300));
         await document.fonts?.ready;
         if (dead) return;
-        const { measureLayout, phoneIntent } = await import('./measure.js');
+        const { measureLayout } = await import('./measure.js');
         const bases = (job.bases || []).filter((b) => /^sections\.\d+$/.test(b));
-        reply({ data: job.task === 'phoneIntent' ? phoneIntent(document.body, bases, content) : measureLayout(document.body, bases, content) });
+        reply({ data: measureLayout(document.body, bases, content) });
       } catch (err) {
         reply({ error: err.message || 'Could not measure the page.' });
       }

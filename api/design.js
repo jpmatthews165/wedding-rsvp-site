@@ -1,8 +1,15 @@
 // POST /api/design — design changes (code) requested from the website editor.
 // Admins only. Talks to GitHub with a token limited to this repo:
 //   { action: 'create',  request, followUpOf? }   → starts the "Design change" workflow
+//   { action: 'create',  kind: 'cleanup', cleanup: { content, bases, desktop, phone, note } }
+//                                                  → "Clean up": Claude Code rebuilds those
+//                                                    sections as clean responsive code plus a
+//                                                    content patch (src/content/designPatch.js)
 //   { action: 'list' }                             → recent requests with live status
-//   { action: 'approve', id }                      → merges the change into main (goes live)
+//   { action: 'approve', id }                      → merges the change into main (goes live);
+//                                                    for a clean-up also applies its content
+//                                                    patch to the published site and returns
+//                                                    it ({ patch }) for the editor's draft
 //   { action: 'discard', id }                      → closes it and deletes its branch
 //
 // Required Vercel environment variables:
@@ -12,13 +19,23 @@
 //           VERCEL_AUTOMATION_BYPASS_SECRET (set automatically when Vercel's
 //           "Protection Bypass for Automation" is on) so previews open without a Vercel login.
 import { randomBytes } from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import { FieldValue } from 'firebase-admin/firestore';
 import { verifyAdminToken, bearerToken } from './_admin.js';
 import { getDb, readJsonBody } from './_lib.js';
+import { applyPatch, cleanPatch } from '../src/content/designPatch.js';
+import { sectionLabel } from '../src/content/schema.js';
 
 const REPO = process.env.GITHUB_REPO || 'jpmatthews165/wedding-rsvp-site';
 const WORKFLOW = 'design-change.yml';
 const COLLECTION = 'designRequests';
+const PENDING = 'src/content/designPending.json';
+// Requests made from a feature branch's preview build on (and merge back into) that
+// branch, so new pipeline features can be tried before they reach main. Production
+// (and anything else) uses main.
+const HERE = process.env.VERCEL_GIT_COMMIT_REF || '';
+const BASE = /^feature\/[A-Za-z0-9._-]+$/.test(HERE) ? HERE : 'main';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const gh = async (path, { method = 'GET', body } = {}) => {
   const res = await fetch(`https://api.github.com${path}`, {
@@ -48,11 +65,13 @@ const withBypass = (url) => {
   return `${url}${url.includes('?') ? '&' : '?'}x-vercel-protection-bypass=${encodeURIComponent(secret)}&x-vercel-set-bypass-cookie=samesitenone`;
 };
 
-const dispatch = (doc, attempt, request, followUp) => gh(`/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
+const dispatch = (doc, attempt, request, followUp, payload = '') => gh(`/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches`, {
   method: 'POST',
   body: {
-    ref: 'main',
+    ref: doc.base || 'main',
     inputs: {
+      kind: doc.kind || 'design',
+      payload,
       request_id: doc.id,
       attempt: String(attempt),
       request,
@@ -106,9 +125,9 @@ const refresh = async (ref, d) => {
       pr = open[0] || await gh(`/repos/${REPO}/pulls`, {
         method: 'POST',
         body: {
-          title: `Design: ${d.text.slice(0, 70)}`,
+          title: `${d.kind === 'cleanup' ? 'Clean up' : 'Design'}: ${d.text.slice(0, 70)}`,
           head: d.branch,
-          base: 'main',
+          base: d.base || 'main',
           body: `Requested by ${d.by} from the website editor.\n\n> ${d.text.replace(/\n/g, '\n> ')}\n\nApprove or discard it in the editor (Ask Claude → Design changes).`,
         },
       });
@@ -150,7 +169,7 @@ const refresh = async (ref, d) => {
 };
 
 const publicView = (d) => ({
-  id: d.id, text: d.text, by: d.by, state: d.state, attempt: d.attempt,
+  id: d.id, text: d.text, by: d.by, state: d.state, attempt: d.attempt, kind: d.kind || 'design', base: d.base || 'main',
   history: d.history || [], reason: d.reason || '', summary: d.summary || '',
   previewUrl: withBypass(d.previewUrl || ''), prUrl: d.prUrl || '', runUrl: d.runUrl || '',
   createdAt: d.createdAt?.toMillis?.() || null,
@@ -170,6 +189,30 @@ export default async function handler(req, res) {
   const col = getDb().collection(COLLECTION);
 
   try {
+    if (body.action === 'create' && body.kind === 'cleanup') {
+      const c = body.cleanup || {};
+      const content = c.content;
+      const bases = Array.isArray(c.bases) ? [...new Set(c.bases)] : [];
+      if (!Array.isArray(content?.sections) || !bases.length || bases.length > 40
+        || !bases.every((b) => /^sections\.\d+$/.test(b) && content.sections[Number(b.split('.')[1])])
+        || !Array.isArray(c.desktop) || !Array.isArray(c.phone)) {
+        return res.status(400).json({ error: 'Invalid clean-up request.' });
+      }
+      const note = typeof c.note === 'string' ? c.note.trim().slice(0, 1000) : '';
+      const payload = gzipSync(JSON.stringify({ content, bases, desktop: c.desktop, phone: c.phone, note })).toString('base64');
+      if (payload.length > 60000) return res.status(400).json({ error: 'That’s too much to clean up in one go. Pick fewer sections.' });
+      const labels = bases.map((b) => sectionLabel(content.sections[Number(b.split('.')[1])]));
+      const all = bases.length === content.sections.filter((s) => s.visible !== false).length && bases.length > 2;
+      const text = `${all ? 'The whole site' : labels.join(', ')}${note ? ` (${note})` : ''}`.slice(0, 1500);
+      const request = `Clean up these sections: ${bases.map((b, i) => `${labels[i]} (id ${content.sections[Number(b.split('.')[1])].id})`).join('; ')}.${note ? `\n\nThe couple's note: ${note}` : ''}`;
+
+      const id = `${new Date().toISOString().slice(5, 10).replace('-', '')}-${randomBytes(3).toString('hex')}`;
+      const doc = { id, text, by: user.email, branch: `design/${id}`, base: BASE, kind: 'cleanup', attempt: 1, state: 'working', history: [], createdAt: FieldValue.serverTimestamp() };
+      await dispatch(doc, 1, request, false, payload);
+      await col.doc(id).set(doc);
+      return res.status(200).json({ ok: true, id });
+    }
+
     if (body.action === 'create') {
       const request = String(body.request || '').trim();
       if (request.length < 5 || request.length > 2000) return res.status(400).json({ error: 'Describe the change in 5–2000 characters.' });
@@ -182,13 +225,13 @@ export default async function handler(req, res) {
         if (['published', 'discarded'].includes(d.state)) return res.status(400).json({ error: 'That change is already finished. Start a new request.' });
         const attempt = (d.attempt || 1) + 1;
         const combined = `Original request: ${d.text}\n\nFollow-up from ${user.email}: ${request}`;
-        await dispatch({ ...d, by: user.email }, attempt, combined, true);
+        await dispatch({ ...d, by: user.email }, attempt, combined, true); // a clean-up reuses the request stored on its branch
         await ref.set({ attempt, state: 'working', reason: '', previewUrl: '', history: FieldValue.arrayUnion({ text: request, by: user.email, at: Date.now() }), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
         return res.status(200).json({ ok: true, id: d.id });
       }
 
       const id = `${new Date().toISOString().slice(5, 10).replace('-', '')}-${randomBytes(3).toString('hex')}`;
-      const doc = { id, text: request, by: user.email, branch: `design/${id}`, attempt: 1, state: 'working', history: [], createdAt: FieldValue.serverTimestamp() };
+      const doc = { id, text: request, by: user.email, branch: `design/${id}`, base: BASE, kind: 'design', attempt: 1, state: 'working', history: [], createdAt: FieldValue.serverTimestamp() };
       await dispatch(doc, 1, request, false);
       await col.doc(id).set(doc);
       return res.status(200).json({ ok: true, id });
@@ -210,15 +253,55 @@ export default async function handler(req, res) {
 
       if (body.action === 'approve') {
         if (d.state !== 'ready' || !d.prNumber) return res.status(409).json({ error: 'This change isn’t ready to publish yet.' });
-        try {
-          await gh(`/repos/${REPO}/pulls/${d.prNumber}/merge`, { method: 'PUT', body: { merge_method: 'squash', commit_title: `Design: ${d.text.slice(0, 70)} (#${d.prNumber})` } });
-        } catch (err) {
-          if (err.status === 405 || err.status === 409) return res.status(409).json({ error: 'The site changed since this was made, so it can’t be merged automatically. Use “Request changes” and ask Claude to redo it.' });
-          throw err;
+
+        // A clean-up's content patch lives on its branch; take it out (so it never
+        // reaches main) and keep it to apply to the content below.
+        let patch = [];
+        const file = await gh(`/repos/${REPO}/contents/${PENDING}?ref=${encodeURIComponent(d.branch)}`).catch(() => null);
+        if (file?.sha) {
+          const blob = await gh(`/repos/${REPO}/git/blobs/${file.sha}`);
+          let pending = null;
+          try { pending = JSON.parse(Buffer.from(blob.content, 'base64').toString('utf8')); } catch { /* treat as none */ }
+          if (pending) {
+            patch = cleanPatch(pending.patch || []);
+            await gh(`/repos/${REPO}/contents/${PENDING}`, {
+              method: 'PUT',
+              body: { message: 'Clear clean-up preview data before merging', content: Buffer.from('null\n').toString('base64'), sha: file.sha, branch: d.branch },
+            });
+          }
+        }
+
+        const title = `${d.kind === 'cleanup' ? 'Clean up' : 'Design'}: ${d.text.slice(0, 70)} (#${d.prNumber})`;
+        for (let tries = 0; ; tries++) {
+          try {
+            await gh(`/repos/${REPO}/pulls/${d.prNumber}/merge`, { method: 'PUT', body: { merge_method: 'squash', commit_title: title } });
+            break;
+          } catch (err) {
+            // Right after the commit above GitHub may still be working out mergeability.
+            if (err.status === 405 && tries < 5) { await sleep(2000); continue; }
+            if (err.status === 405 || err.status === 409) return res.status(409).json({ error: 'The site changed since this was made, so it can’t be merged automatically. Use “Request changes” and ask Claude to redo it.' });
+            throw err;
+          }
         }
         await gh(`/repos/${REPO}/git/refs/heads/${d.branch}`, { method: 'DELETE' }).catch(() => {});
-        await ref.set({ state: 'published', approvedBy: user.email, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-        return res.status(200).json({ ok: true });
+
+        // The new code goes live with the next deploy of main; give the live content the
+        // matching patch now. (From a feature branch's preview, the code doesn't go live,
+        // so only the editor's draft gets the patch.)
+        let publishedChanged = false;
+        if (patch.length && (d.base || 'main') === 'main') {
+          const db = getDb();
+          const pubRef = db.doc('settings/content');
+          await db.runTransaction(async (t) => {
+            const snap = await t.get(pubRef);
+            const current = snap.exists ? snap.data().content : null;
+            if (!current?.sections) return;
+            const r = applyPatch(current, patch);
+            if (r.applied) { t.update(pubRef, { content: JSON.parse(JSON.stringify(r.content)) }); publishedChanged = true; }
+          });
+        }
+        await ref.set({ state: 'published', approvedBy: user.email, patchCount: patch.length, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        return res.status(200).json({ ok: true, patch, publishedChanged });
       }
 
       if (d.prNumber) await gh(`/repos/${REPO}/pulls/${d.prNumber}`, { method: 'PATCH', body: { state: 'closed' } }).catch(() => {});

@@ -1,25 +1,23 @@
 import { useState } from 'react';
 import { Check, Loader2, Wand2, X } from 'lucide-react';
-import { applyOperations, setAt } from '../../content/paths.js';
 import { sectionLabel } from '../../content/schema.js';
 import { createMeasurer } from './measurer.js';
 
-// "Clean up": Claude looks at the chosen sections on desktop AND phone and tidies
-// spacing, alignment, sizes and section heights so both views match. Steps:
-// 1. measure both layouts in hidden previews (measurer.js),
-// 2. ask /api/cleanup for style/layout edits,
-// 3. apply them, then redo the automatic phone layout from the new desktop layout,
-// 4. save it all as ONE change, so a single Undo brings everything back.
-const STEPS = { measuring: 'Measuring desktop and phone layouts…', thinking: 'Claude is tidying things up…', applying: 'Applying the changes…' };
+// "Clean up": Claude Code looks at how the chosen sections were arranged by hand
+// (drags, sizes, phone tweaks), measured on desktop AND phone, and rebuilds them as
+// clean responsive code, removing the overrides that are no longer needed. It runs
+// as a design change (api/design.js → GitHub workflow): a few minutes, a preview,
+// and nothing changes until it's approved in Ask Claude → Design changes.
+// Steps here: measure both layouts in hidden previews (measurer.js), then start it.
+const STEPS = { measuring: 'Measuring desktop and phone layouts…', starting: 'Sending it to Claude…' };
 
-export default function CleanupDialog({ content, getContent, selected, applyChange, getToken, onFocus, onClose }) {
+export default function CleanupDialog({ content, getContent, selected, getToken, onShowDesign, onClose }) {
   const sections = content.sections.map((s, i) => ({ base: `sections.${i}`, label: sectionLabel(s), hidden: s.visible === false }));
   const preselect = typeof selected === 'string' && /^sections\.\d+$/.test(selected) ? selected : null;
   const [scope, setScope] = useState(preselect ? 'some' : 'all');
   const [chosen, setChosen] = useState(() => new Set(preselect ? [preselect] : []));
   const [note, setNote] = useState('');
-  const [status, setStatus] = useState('idle'); // idle | measuring | thinking | applying | done | error
-  const [result, setResult] = useState(null);   // { summary, changes, applied }
+  const [status, setStatus] = useState('idle'); // idle | measuring | starting | done | error
   const [error, setError] = useState('');
   const busy = STEPS[status];
 
@@ -28,7 +26,7 @@ export default function CleanupDialog({ content, getContent, selected, applyChan
 
   const run = async () => {
     if (!bases.length || busy) return;
-    setError(''); setResult(null);
+    setError('');
     const m = createMeasurer();
     try {
       setStatus('measuring');
@@ -37,30 +35,14 @@ export default function CleanupDialog({ content, getContent, selected, applyChan
       const desktop = await m.measure('desktop', snapshot, bases);
       const phone = await m.measure('phone', snapshot, bases);
 
-      setStatus('thinking');
-      const token = await getToken();
-      const res = await fetch('/api/cleanup', {
+      setStatus('starting');
+      const res = await fetch('/api/design', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ content: snapshot, bases, desktop, phone, note }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
+        body: JSON.stringify({ action: 'create', kind: 'cleanup', cleanup: { content: snapshot, bases, desktop, phone, note } }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Clean up isn't available right now (error ${res.status}).`);
-      if (data.failed) throw new Error(data.summary);
-
-      setStatus('applying');
-      const ops = data.operations || [];
-      if (ops.length) {
-        // Apply to the latest draft (in case it changed meanwhile), then recompute the
-        // automatic phone layout of the touched sections from the new desktop layout.
-        let next = applyOperations(getContent(), ops);
-        const touched = [...new Set(ops.map((o) => /^sections\.\d+/.exec(o.path)?.[0]).filter(Boolean))];
-        const intent = await m.phoneIntent(next, touched);
-        next = intent.reduce((acc, c) => setAt(acc, c.path, c.value), next);
-        applyChange(next, null);
-        if (touched.length === 1) onFocus(touched[0]);
-      }
-      setResult({ summary: data.summary, changes: data.changes || [], applied: ops.length });
       setStatus('done');
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
@@ -76,22 +58,18 @@ export default function CleanupDialog({ content, getContent, selected, applyChan
         <div className="flex items-start justify-between gap-3 px-6 pt-5">
           <div>
             <h3 className="font-semibold text-[#333036] flex items-center gap-2"><Wand2 className="w-4 h-4 text-[#6c5d84]" /> Clean up the layout</h3>
-            <p className="text-xs text-[#333036]/65 mt-1">Claude looks at your desktop and phone layouts together, evens out spacing, lines things up and makes both views match. Text, colors, fonts and photos stay as they are. One Undo brings everything back.</p>
+            <p className="text-xs text-[#333036]/65 mt-1">Claude looks at how you arranged things on desktop and phone and rebuilds those sections as clean, responsive design: proper columns, even spacing, things lined up, and a phone layout that follows naturally. Your hand-placed nudges are replaced by the real thing. Text, colors, fonts and photos stay as they are.</p>
           </div>
           <button type="button" onClick={onClose} disabled={!!busy} aria-label="Close" className="p-1 rounded hover:bg-[#333036]/5 disabled:opacity-30"><X className="w-4 h-4" /></button>
         </div>
 
-        {status === 'done' && result ? (
+        {status === 'done' ? (
           <div className="px-6 py-5 space-y-3">
-            <p className="text-sm text-[#333036] flex gap-2"><Check className="w-4 h-4 text-[#5b7a5b] shrink-0 mt-0.5" /> {result.summary}</p>
-            {result.changes.length > 0 && (
-              <ul className="text-xs text-[#333036]/75 list-disc pl-9 space-y-1">{result.changes.map((c, i) => <li key={i}>{c}</li>)}</ul>
-            )}
-            {result.applied === 0 && <p className="text-xs text-[#333036]/60 pl-6">Nothing needed changing.</p>}
-            <p className="text-xs text-[#333036]/55 pl-6">Check the preview on desktop and phone. Don't like it? Press Undo once. Nothing is live until you Publish.</p>
+            <p className="text-sm text-[#333036] flex gap-2"><Check className="w-4 h-4 text-[#5b7a5b] shrink-0 mt-0.5" /> Claude is on it. This usually takes 5–10 minutes.</p>
+            <p className="text-xs text-[#333036]/65 pl-6">Follow it under <strong>Ask Claude → Design changes</strong>. When it's ready, open the preview to check desktop and phone, then <strong>Approve & publish</strong> (your draft gets the matching tidy-up as one Undo step) or ask for a tweak. Nothing changes until then. Keep editing other things meanwhile; avoid re-arranging the sections being cleaned up.</p>
             <div className="flex justify-end gap-2 pt-1">
-              <button type="button" onClick={() => { setStatus('idle'); setResult(null); }} className="rounded-md px-3 py-2 text-sm hover:bg-[#333036]/5">Clean up more</button>
-              <button type="button" onClick={onClose} className="rounded-md bg-[#6c5d84] text-white px-4 py-2 text-sm font-semibold hover:bg-[#524569]">Done</button>
+              <button type="button" onClick={onClose} className="rounded-md px-3 py-2 text-sm hover:bg-[#333036]/5">Close</button>
+              <button type="button" onClick={() => { onShowDesign(); onClose(); }} className="rounded-md bg-[#6c5d84] text-white px-4 py-2 text-sm font-semibold hover:bg-[#524569]">Show Design changes</button>
             </div>
           </div>
         ) : (
@@ -118,7 +96,7 @@ export default function CleanupDialog({ content, getContent, selected, applyChan
             <label className="block">
               <span className="text-xs font-semibold text-[#333036]/70">Anything in particular? (optional)</span>
               <textarea value={note} onChange={(e) => setNote(e.target.value)} disabled={!!busy} rows={2} maxLength={1000}
-                placeholder="e.g. more breathing room around the photos, keep the buttons side by side"
+                placeholder="e.g. keep the photo on the left, more breathing room around the cards"
                 className="mt-1 w-full rounded-md border border-[#333036]/20 px-2.5 py-2 text-sm resize-none" />
             </label>
             {error && <p className="text-sm text-[#7a4d55] bg-[#d4a5a5]/20 rounded-md px-3 py-2">{error}</p>}
