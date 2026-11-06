@@ -70,7 +70,9 @@ const refresh = async (ref, d) => {
 
   // 1. Latest workflow run for this request's latest attempt.
   const runs = await gh(`/repos/${REPO}/actions/workflows/${WORKFLOW}/runs?event=workflow_dispatch&per_page=40`);
-  const run = runs.workflow_runs.find((r) => r.display_title === `design ${d.id} #${d.attempt}`);
+  // Title format is "design <id> attempt <n>"; older runs were titled just "design <id>".
+  const run = runs.workflow_runs.find((r) => r.display_title === `design ${d.id} attempt ${d.attempt}`)
+    || (d.attempt === 1 ? runs.workflow_runs.find((r) => r.display_title === `design ${d.id}`) : null);
   if (!run) {
     // GitHub takes a few seconds to list a newly started run.
     update.state = 'working';
@@ -86,7 +88,11 @@ const refresh = async (ref, d) => {
       for (const job of jobs.jobs) {
         const notes = await gh(`/repos/${REPO}/check-runs/${job.id}/annotations`);
         const hit = notes.find((a) => /^Design change/.test(a.title || ''));
-        if (hit) { reason = hit.message.replace(/^(OUT_OF_SCOPE|CONTENT_ONLY):\s*/, ''); break; }
+        if (hit) {
+          reason = hit.message.replace(/^No changes were made\.\s*/, '').replace(/^(OUT_OF_SCOPE|CONTENT_ONLY):\s*/, '');
+          if (/not logged in|\/login|api key/i.test(reason)) reason = "Claude couldn't sign in on GitHub (the API key secret is missing or invalid). Josh needs to check the ANTHROPIC_API_KEY secret, then use Redo.";
+          break;
+        }
       }
     } catch { /* keep generic reason */ }
     update.reason = reason;

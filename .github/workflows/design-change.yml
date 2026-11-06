@@ -5,7 +5,8 @@
 # Nothing here touches main: the result is pushed to its own design/* branch,
 # Vercel builds a preview, and it only goes live when approved in the editor.
 name: Design change (Claude)
-run-name: design ${{ inputs.request_id }} #${{ inputs.attempt }}
+# Quoted: an unquoted " #" would start a YAML comment and cut the title short.
+run-name: "design ${{ inputs.request_id }} attempt ${{ inputs.attempt }}"
 
 on:
   workflow_dispatch:
@@ -43,7 +44,7 @@ jobs:
           [[ "$REQUEST_ID" =~ ^[a-z0-9-]{4,40}$ ]] || { echo "::error title=Design change::Invalid request id."; exit 1; }
           [ ${#REQUEST} -le 4000 ] || { echo "::error title=Design change::Request is too long."; exit 1; }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
@@ -56,7 +57,7 @@ jobs:
             git checkout -B "$BRANCH"
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -67,6 +68,10 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::error title=Design change failed::The Claude API key isn't set up for GitHub. Josh: add a repository secret named ANTHROPIC_API_KEY under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
           {
             if [ "$FOLLOW_UP" = "true" ]; then
               echo "This is a follow-up on an earlier design change on this branch. Adjust the existing change as asked:"
