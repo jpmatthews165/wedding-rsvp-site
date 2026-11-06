@@ -20,6 +20,8 @@ const describe = (path, kind) => {
   return {
     parent: parentEl ? { path: parentEl.getAttribute('data-el'), kind: parentEl.getAttribute('data-el-kind') } : null,
     label: kind === 'button' ? el?.querySelector('[data-label]')?.getAttribute('data-label') || null : null,
+    // Where a button links to: its content path and the design's default target.
+    link: el?.getAttribute('data-link') ? { path: el.getAttribute('data-link'), fallback: el.getAttribute('data-link-default') || '' } : null,
   };
 };
 
@@ -110,6 +112,17 @@ export default function PreviewFrame() {
       onPatchMany: (changes) => send({ type: 'editMany', changes }),
     };
   }, [selected, selection, grid, alignRequest]);
+
+  // While editing, buttons and links don't go anywhere (clicks select them instead);
+  // where they lead is set with "Link to…" in the format bar.
+  useEffect(() => {
+    if (MEASURE) return;
+    const block = (e) => {
+      if (e.target.closest?.('a[href], [data-el-kind="button"]')) { e.preventDefault(); e.stopPropagation(); }
+    };
+    window.addEventListener('click', block, true);
+    return () => window.removeEventListener('click', block, true);
+  }, []);
 
   if (!content) return <div className="min-h-screen bg-paper" />;
   return <Site content={content} edit={edit} />;

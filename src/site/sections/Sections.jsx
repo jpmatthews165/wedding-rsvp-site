@@ -4,7 +4,7 @@ import RevealOnScroll from '../RevealOnScroll.jsx';
 import CoverImage from '../CoverImage.jsx';
 import SectionBackground from '../SectionBackground.jsx';
 import { safeUrl } from '../../lib/safeUrl.js';
-import { T, useShow, useSection, useEdit, ImageButton, Movable, Group } from '../editing.jsx';
+import { T, useShow, useSection, useEdit, useLink, ImageButton, Movable, Group } from '../editing.jsx';
 import { zonedTimeToDate, toIcsUtc } from '../../content/time.js';
 
 const btnOutline = 'font-subtitle border border-brand text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors text-center';
@@ -16,6 +16,25 @@ const Divider = ({ center = true, className = '' }) => (
 const H2 = ({ f = 'title', className = '' }) => (
   <T f={f} as="h2" className={`font-title text-5xl md:text-7xl text-brand mb-6 ${className}`} placeholder="Heading" />
 );
+
+// A button that links to a section on this page ("#rsvp" scrolls there) or a web
+// address (opens in a new tab). The editor's format bar sets where it goes.
+// field: the content field holding its link, if the section type has one.
+function LinkButton({ f, field, fallback, className = '', children }) {
+  const edit = useEdit();
+  const { href, internal, linkProps } = useLink(f, field, fallback);
+  return (
+    <Movable as="a" kind="button" f={f} {...linkProps}
+      href={href || '#'} target={internal || !href ? undefined : '_blank'} rel={internal ? undefined : 'noopener noreferrer'}
+      onClick={(e) => {
+        if (edit || !href) { e.preventDefault(); return; }
+        if (internal) { e.preventDefault(); scrollToSection(href.slice(1)); }
+      }}
+      className={`${className} ${!href && !edit ? 'opacity-60 cursor-default' : ''}`}>
+      {children}
+    </Movable>
+  );
+}
 
 // A list item's fields are edited at e.g. "items.2.title".
 const itemPath = (list, i, key) => `${list}.${i}.${key}`;
@@ -51,9 +70,9 @@ export function HeroSection() {
       {useShow('buttonText') && (
         <div className="absolute bottom-12 w-full text-center z-20">
           <RevealOnScroll loadImmediately delay={300}>
-            <Movable as="button" kind="button" f="_btn" onClick={() => scrollToSection('rsvp')} className="inline-flex items-center justify-center font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
+            <LinkButton f="_btn" fallback="#rsvp" className="inline-flex items-center justify-center font-subtitle border border-brand bg-paper/60 backdrop-blur-sm text-brand px-8 py-3 text-xs tracking-[0.15em] uppercase hover:bg-brand hover:text-paper transition-colors shadow-sm">
               <T f="buttonText" />
-            </Movable>
+            </LinkButton>
           </RevealOnScroll>
         </div>
       )}
@@ -124,7 +143,7 @@ export function DetailsSection({ site }) {
               </Movable>
             )}
             {useShow('rsvpButtonText') && (
-              <Movable as="button" kind="button" f="_btnRsvp" onClick={() => scrollToSection('rsvp')} className={`inline-flex items-center justify-center ${btnSolid}`}><T f="rsvpButtonText" /></Movable>
+              <LinkButton f="_btnRsvp" fallback="#rsvp" className={`inline-flex items-center justify-center ${btnSolid}`}><T f="rsvpButtonText" /></LinkButton>
             )}
           </RevealOnScroll>
           {section.showMap && section.mapQuery && (
@@ -202,9 +221,9 @@ export function TravelSection() {
                   </div>
                 )}
                 {(safeUrl(h.url) || edit) && (h.buttonText || edit) && (
-                  <Movable as="a" kind="button" f={itemPath('hotels', i, '_btn')} href={safeUrl(h.url) || '#'} target="_blank" rel="noopener noreferrer" className={`mt-4 flex items-center justify-center w-full ${btnOutline}`}>
+                  <LinkButton f={itemPath('hotels', i, '_btn')} field={itemPath('hotels', i, 'url')} className={`mt-4 flex items-center justify-center w-full ${btnOutline}`}>
                     <T f={itemPath('hotels', i, 'buttonText')} />
-                  </Movable>
+                  </LinkButton>
                 )}
               </Movable>
             ))}
@@ -355,9 +374,9 @@ export function TextSection() {
           </Group>
           {(section.buttonText && safeUrl(section.buttonUrl)) || edit ? (
             <div className="mt-10">
-              <Movable as="a" kind="button" f="_btn" href={safeUrl(section.buttonUrl) || '#'} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center justify-center ${btnOutline}`}>
+              <LinkButton f="_btn" field="buttonUrl" className={`inline-flex items-center justify-center ${btnOutline}`}>
                 <T f="buttonText" placeholder="Button text (optional)" />
-              </Movable>
+              </LinkButton>
             </div>
           ) : null}
         </RevealOnScroll>
@@ -410,7 +429,6 @@ export function GallerySection() {
 // ---------------------------------------------------------------- REGISTRY
 export function RegistrySection() {
   const { section } = useSection();
-  const edit = useEdit();
   const links = section.links || [];
   return (
     <section id={section.id} className="relative py-40 flex items-center justify-center overflow-hidden bg-paper2">
@@ -425,11 +443,9 @@ export function RegistrySection() {
           </Group>
           <div className="flex flex-col sm:flex-row flex-wrap gap-6 justify-center">
             {links.map((l, i) => (
-              <Movable as="a" kind="button" f={itemPath('links', i, '_btn')} key={i} href={safeUrl(l.url) || '#'} target="_blank" rel="noopener noreferrer"
-                onClick={(e) => { if (!safeUrl(l.url)) e.preventDefault(); }}
-                className={`inline-flex items-center justify-center ${btnOutline} py-4 ${!safeUrl(l.url) && !edit ? 'opacity-60 cursor-default' : ''}`}>
+              <LinkButton key={i} f={itemPath('links', i, '_btn')} field={itemPath('links', i, 'url')} className={`inline-flex items-center justify-center ${btnOutline} py-4`}>
                 <T f={itemPath('links', i, 'label')} />
-              </Movable>
+              </LinkButton>
             ))}
           </div>
           <EmptyListHint label="registry links" />

@@ -3,6 +3,7 @@ import { ImagePlus, Move } from 'lucide-react';
 import { getAt } from '../content/paths.js';
 import { boxAttrs, boxCss, cleanSectionLayout, isTextBox, layoutGrid, styleKey, textCss } from '../content/fieldStyle.js';
 import { PHONE_QUERY } from './CoverImage.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 // When the site renders inside the editor, EditContext carries callbacks back to it.
 // On the public site it's null and everything renders as plain text.
@@ -215,6 +216,23 @@ export function Movable({ f, kind = 'image', as: Tag = 'div', className = '', st
 export function Group({ f, className = '', as = 'div', children }) {
   return <Movable f={f} kind="group" as={as} className={className}>{children}</Movable>;
 }
+
+// Where a button goes: a section on this page ("#rsvp") or a web address.
+// `field` is the button's own link field if the type has one (e.g. "hotels.0.url",
+// "buttonUrl"); otherwise it's stored as section.linkTo.<style key>, falling back to
+// `fallback` (the design's default, e.g. "#rsvp"). In the editor the element gets
+// data-link (the content path) so the format bar can offer "Link to…".
+export const useLink = (f, field, fallback = '') => {
+  const edit = useEdit();
+  const { section, base } = useSection();
+  const path = field || `linkTo.${styleKey(f)}`;
+  const href = safeUrl(getAt(section, path) || fallback);
+  return {
+    href,
+    internal: href.startsWith('#'),
+    linkProps: edit ? { 'data-link': `${base}.${path}`, 'data-link-default': fallback || undefined } : {},
+  };
+};
 
 // True if the field has text, or we're in the editor (so empty fields can still be filled in).
 export const useShow = (f) => {

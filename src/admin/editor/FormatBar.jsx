@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AlignCenter, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignJustify, AlignLeft,
-  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, ImagePlus, Italic, Maximize2, Minus, Move, PaintBucket, Pipette, Plus,
+  AlignRight, AlignStartHorizontal, AlignStartVertical, Bold, Grid3x3, ImagePlus, Italic, Link2, Maximize2, Minus, Move, PaintBucket, Pipette, Plus,
   RotateCcw, Smartphone, SquareDashedMousePointer, Trash2, X,
 } from 'lucide-react';
 import FontPicker from './FontPicker.jsx';
 import { getAt } from '../../content/paths.js';
 import { BUFFER_SIZES, COLOR_TOKENS, GRID_SIZES, approximatePhone, bgImageField, cleanSectionBg, cleanStyle, layoutBuffer, layoutGrid, styleKey } from '../../content/fieldStyle.js';
-import { SECTION_TYPES } from '../../content/schema.js';
+import { SECTION_TYPES, sectionLabel } from '../../content/schema.js';
+import { safeUrl } from '../../lib/safeUrl.js';
 import { isHex } from '../../content/theme.js';
 
 // Format bar above the preview: formats or positions the element clicked in the preview.
@@ -144,6 +145,63 @@ function FillControls({ targets, roundable, st, themeColors, setOn }) {
   );
 }
 
+// Where a button goes: a section on this page (stored as "#<section id>") or a web
+// address. link = { path, fallback } from the preview (data-link on the button).
+function LinkMenu({ link, content, setMany }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const saved = getAt(content, link.path);
+  const value = safeUrl(saved || link.fallback);
+  const sections = content.sections.map((s) => ({ id: s.id, label: sectionLabel(s), hidden: s.visible === false }));
+  const target = value.startsWith('#') ? sections.find((s) => s.id === value.slice(1)) : null;
+  const [mode, setMode] = useState(value && !value.startsWith('#') ? 'url' : 'section');
+  const [url, setUrl] = useState(value.startsWith('#') ? '' : value);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [open]);
+  const save = (v) => setMany([{ path: link.path, value: v }]);
+  const saveUrl = () => { const u = safeUrl(url); if (u && !u.startsWith('#')) save(u); };
+  const shown = target ? `→ ${target.label}` : value.startsWith('#') ? '→ (missing section)' : value ? value.replace(/^https?:\/\/(www\.)?/, '').slice(0, 22) : 'No link';
+  return (
+    <div className="relative" ref={ref}>
+      <button type="button" title="Where this button goes" onClick={() => setOpen(!open)}
+        className="h-8 px-2 inline-flex items-center gap-1.5 rounded-md text-xs text-[#333036] hover:bg-[#333036]/8 max-w-[12rem]">
+        <Link2 className="w-4 h-4 shrink-0" /><span className="truncate">{shown}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-10 left-0 w-72 rounded-xl border border-[#333036]/12 bg-white shadow-xl p-3 space-y-3 text-xs text-[#333036]">
+          <p className="font-semibold text-[#333036]/70">Link this button to…</p>
+          <label className="flex items-center gap-2"><input type="radio" checked={mode === 'section'} onChange={() => setMode('section')} className="accent-[#6c5d84]" /> A section on this page</label>
+          {mode === 'section' && (
+            <select value={target?.id || ''} onChange={(e) => e.target.value && save(`#${e.target.value}`)}
+              className="ml-5 w-[calc(100%-1.25rem)] h-8 rounded-md border border-[#333036]/20 px-1.5">
+              <option value="">Choose a section…</option>
+              {sections.map((s) => <option key={s.id} value={s.id}>{s.label}{s.hidden ? ' (hidden)' : ''}</option>)}
+            </select>
+          )}
+          <label className="flex items-center gap-2"><input type="radio" checked={mode === 'url'} onChange={() => setMode('url')} className="accent-[#6c5d84]" /> A web address (opens in a new tab)</label>
+          {mode === 'url' && (
+            <div className="ml-5 flex gap-1.5">
+              <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveUrl(); }} onBlur={saveUrl}
+                placeholder="https://…" aria-label="Web address" className="flex-1 min-w-0 h-8 rounded-md border border-[#333036]/20 px-2" />
+              <button type="button" onClick={saveUrl} className="h-8 px-2.5 rounded-md bg-[#6c5d84] text-white font-semibold">Save</button>
+            </div>
+          )}
+          <div className="flex justify-between pt-1 border-t border-[#333036]/10">
+            {link.fallback
+              ? <button type="button" onClick={() => save(undefined)} className="text-[#6c5d84] hover:underline">Back to the default ({sections.find((s) => `#${s.id}` === link.fallback)?.label || link.fallback})</button>
+              : <button type="button" onClick={() => save('')} className="text-[#6c5d84] hover:underline">Remove link</button>}
+          </div>
+          <p className="text-[10px] text-[#333036]/50">Buttons don't respond to clicks while editing; on the site they go here.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Clicking empty space in a section: its background color and photo.
 function SectionBgBar({ item, content, setMany, onPickImage, onAdjustImage, onClose }) {
   const base = item.path.replace(/\._bg$/, '');
@@ -263,6 +321,12 @@ export default function FormatBar({ selection, content, setMany, grid, setGrid, 
         <Btn key={mode} title={single ? singleTitle : title} onClick={() => onAlign(mode)}><Icon className="w-4 h-4" /></Btn>
       ))}
       <Sep />
+      {single && items[0].kind === 'button' && selection[selection.length - 1]?.link && (
+        <>
+          <LinkMenu key={items[0].path} link={selection[selection.length - 1].link} content={content} setMany={setMany} />
+          <Sep />
+        </>
+      )}
       {parent && (
         <>
           <Btn title={`Select the ${parent.kind === 'button' ? 'button' : parent.kind === 'box' ? 'box' : 'item'} around this text`} onClick={() => onSelectItems([parent])}>
